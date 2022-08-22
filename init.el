@@ -48,7 +48,6 @@
 
 (setq inhibit-startup-screen t
       inhibit-startup-echo-area-message t
-      initial-scratch-message nil
       server-client-instructions nil)
 
 ;; (load-theme 'mplex t)
@@ -71,7 +70,7 @@
   (window-divider-mode)
 
 (defun my-set-font-faces ()
-  (let* ((main-font "GoMono Nerd Font Mono")
+  (let* ((main-font "Go Mono")
          (fallback "monospace")
          (font (if (x-list-fonts main-font) main-font fallback)))
     (set-face-attribute 'default nil :font font :height 90)
@@ -109,6 +108,21 @@
           (lambda ()
             (display-line-numbers-mode 0)))
 
+(setq c-default-style "linux")
+(defun my-c-mode-hook ()
+  (setq indent-tabs-mode t)
+  (setq tab-width 8))
+(add-hook 'c-mode-hook 'my-c-mode-hook)
+
+(defconst my-lisp-mode-hooks
+  '(lisp-mode-hook
+    emacs-lisp-mode-hook
+    clojure-mode-hook
+    scheme-mode-hook))
+
+(add-hook 'kill-emacs-hook (lambda ()
+                             (org-babel-tangle "~/.emacs.d/init.org")))
+
 ;; Switch to the scratch buffer
 (defun my-switch-to-scratch-buffer ()
   (interactive)
@@ -132,15 +146,17 @@
   (dlet ((eshell-buffer-name "*eshell session*"))
     (cond ((equal (get-buffer eshell-buffer-name) (window-buffer (selected-window))) 
            (select-window (get-mru-window t t t))) ;; Focused on eshell buffer
-
           ((get-buffer-window eshell-buffer-name)
            (switch-to-buffer-other-window eshell-buffer-name)) ;; Visible in frame
-
           (t
            (let ((buf (eshell))) ;; Buffer does not exist
              (display-buffer buf '(display-buffer-below-selected . ((window-height . 10))))
              (switch-to-buffer (other-buffer buf))
              (switch-to-buffer-other-window buf))))))
+
+(defun my-open-dired()
+  (interactive)
+  (dired default-directory))
 
 (setq bookmark-save-flag 1
       bookmark-set-fringe-mark nil)
@@ -157,33 +173,21 @@
 
 (setq eshell-banner-message "")
 
-; Straight bootstrap
-(setq straight-check-for-modifications nil)
-
 (defvar bootstrap-version)
-
 (let ((bootstrap-file
-       (expand-file-name
-        "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
-      (bootstrap-version 5))
+       (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
+      (bootstrap-version 6))
   (unless (file-exists-p bootstrap-file)
     (with-current-buffer
         (url-retrieve-synchronously
-         "https://raw.githubusercontent.com/raxod502/straight.el/develop/install.el"
+         "https://raw.githubusercontent.com/radian-software/straight.el/develop/install.el"
          'silent 'inhibit-cookies)
       (goto-char (point-max))
       (eval-print-last-sexp)))
   (load bootstrap-file nil 'nomessage))
 
-; Straight config
 (straight-use-package 'use-package)
 (setq straight-use-package-by-default t)
-
-(use-package evil-cleverparens
-  :hook
-  (clojure-mode . evil-cleverparens-mode)
-  (emacs-lisp-mode . evil-cleverparens-mode)
-  (scheme-mode . evil-cleverparens-mode))
 
 (use-package general
   :init
@@ -198,7 +202,8 @@
    ;; Applications
    "a" '(nil :which-key "applications")
    "ag" '(magit-status :which-key "magit")
-   "ad" '(my-switch-to-dashboard-buffer :which-key "dashboard")
+   "ad" '(my-open-dired :which-key "dired")
+   "aD" '(my-switch-to-dashboard-buffer :which-key "dashboard")
    "as" '(my-open-eshell :which-key "eshell")
 
    ;; Buffes 
@@ -237,6 +242,11 @@
    "hf" '(describe-function :which-key "describe function")
    "hF" '(describe-face :which-key "describe face")
    "hv" '(describe-variable :which-key "describe variable")))
+
+(use-package lispyville
+  :ghook my-lisp-mode-hooks
+  :config
+  (lispyville-set-key-theme '(slurp/barf-lispy wrap operators c-w additional commentary)))
 
 (use-package evil
   :demand t
@@ -279,6 +289,10 @@
 (use-package evil-commentary
   :init (evil-commentary-mode))
 
+(use-package mu4e
+  :straight (:pre-build ())
+  :commands mu4e)
+
 (use-package vertico
   :custom
   (vertico-scroll-margin 2)
@@ -294,9 +308,11 @@
 
 (use-package consult)
 
-(use-package consult-lsp)
+(use-package consult-lsp
+  :commands (consult-lsp-symbols consult-lsp-diagnostics consult-lsp-file-symbols))
 
-(use-package consult-flycheck)
+(use-package consult-flycheck
+  :commands (consult-flycheck))
 
 (use-package which-key
   :config
@@ -353,26 +369,26 @@
 
 (use-package scad-mode)
 
-(defun my-org-mode-setup ()
-  (display-line-numbers-mode 0)
-
-  (org-indent-mode)
-  ;; (variable-pitch-mode 1)
-  (auto-fill-mode 0)
-  (visual-line-mode 1)
-
-  ;; Org tempo
-  (require 'org-tempo)
-
-  (add-to-list 'org-structure-template-alist '("sh" . "src shell"))
-  (add-to-list 'org-structure-template-alist '("el" . "src emacs-lisp"))
-  (add-to-list 'org-structure-template-alist '("py" . "src python")))
-
 (use-package org
   :init
   (org-babel-do-load-languages
    'org-babel-load-languages
    '((python . t)))
+
+  (defun my-org-mode-setup ()
+    (display-line-numbers-mode 0)
+
+    (org-indent-mode)
+    (auto-fill-mode 0)
+    (visual-line-mode 1)
+
+    ;; Org tempo
+    (require 'org-tempo)
+    (require 'org-agenda)
+
+    (add-to-list 'org-structure-template-alist '("sh" . "src shell"))
+    (add-to-list 'org-structure-template-alist '("el" . "src emacs-lisp"))
+    (add-to-list 'org-structure-template-alist '("py" . "src python")))
   :hook
   (org-mode . my-org-mode-setup)
   :config
@@ -381,13 +397,14 @@
 
 (use-package org-bullets
   :after org
-  :hook (org-mode . org-bullets-mode))
-
-
-(setq org-bullets-face-name "BlexMono Nerd Font")
+  :hook (org-mode . org-bullets-mode)
+  :custom
+  (org-bullets-bullet-list '("●" "○" "●" "○" "●" "○" "●")))
 
 (use-package org-present
   :commands (org-present))
+
+(setq org-agenda-files '("~/doc/agenda"))
 
 (use-package orderless
   :config
@@ -421,7 +438,7 @@
   :custom
   (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
   (corfu-auto t)                 ;; Enable auto completion
-  (corfu-auto-delay 0)
+  (corfu-auto-delay 0.1)
   (corfu-auto-prefix 3)
   (corfu-separator ?\s)             ;; Orderless field separator
   (corfu-quit-at-boundary 'separator)      ;; Never quit at completion boundary
@@ -432,6 +449,16 @@
     "Enable Corfu in the minibuffer if `completion-at-point' is bound."
     (when (where-is-internal #'completion-at-point (list (current-local-map)))
       (corfu-mode 1)))
+
+  (mapc #'evil-declare-ignore-repeat
+        '(corfu-next
+          corfu-previous
+          corfu-first
+          corfu-last))
+
+  (mapc #'evil-declare-change-repeat
+        '(corfu-insert
+          corfu-complete))
   :bind
   (:map corfu-map
         ("C-s" . corfu-quit)
@@ -524,13 +551,16 @@
   :hook
   (python-mode . my-python-setup))
 
-(use-package acme-theme
-  :straight
-  (:local-repo "/home/cassio/src/acme-emacs-theme")
+(use-package modus-themes
   :custom
-  (acme-theme-black-fg t)
+  (modus-themes-org-blocks 'gray-background)
+  (modus-themes-italic-constructs t)
+  (modus-themes-subtle-line-numbers t)
+  (modus-themes-syntax '(green-strings faint))
+  (modus-themes-paren-match '(bold))
+  (modus-themes-mode-line '(borderless))
   :init
-  (load-theme 'acme t))
+  (load-theme 'modus-vivendi t))
 
 (use-package doom-modeline
   :init
@@ -541,6 +571,9 @@
   :commands rainbow-mode)
 
 (use-package dashboard
+  :init
+  (custom-set-faces
+   '(dashboard-items-face ((t (:inherit default)))))
   :config
   (setq initial-buffer-choice (lambda () (get-buffer-create "*dashboard*")))
   :custom

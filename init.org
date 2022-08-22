@@ -111,13 +111,6 @@ Straight.el recommends this
     (setq package-enable-at-startup nil)
 #+end_src
 
-*** Tangle init.org file
-
- #+begin_src emacs-lisp :tangle ./early-init.el
-  (require 'org)
-  (org-babel-tangle-file "/home/cassio/.emacs.d/init.org")
-#+end_src
-
 * General Config
 ** Quality of life
 
@@ -173,7 +166,6 @@ Remove ugly stuff, add pretty stuff
 
   (setq inhibit-startup-screen t
         inhibit-startup-echo-area-message t
-        initial-scratch-message nil
         server-client-instructions nil)
 
   ;; (load-theme 'mplex t)
@@ -206,7 +198,7 @@ Set the font /main-font/, if not avaliable, use /monospace/ as a fallback
 
 #+begin_src elisp
   (defun my-set-font-faces ()
-    (let* ((main-font "GoMono Nerd Font Mono")
+    (let* ((main-font "Go Mono")
            (fallback "monospace")
            (font (if (x-list-fonts main-font) main-font fallback)))
       (set-face-attribute 'default nil :font font :height 90)
@@ -264,6 +256,33 @@ Only enable the electrip pair mode in the programming mode
               (display-line-numbers-mode 0)))
 #+end_src
 
+*** C mode hook
+
+#+begin_src emacs-lisp
+  (setq c-default-style "linux")
+  (defun my-c-mode-hook ()
+    (setq indent-tabs-mode t)
+    (setq tab-width 8))
+  (add-hook 'c-mode-hook 'my-c-mode-hook)
+#+end_src
+
+*** General hooks
+
+#+begin_src emacs-lisp
+  (defconst my-lisp-mode-hooks
+    '(lisp-mode-hook
+      emacs-lisp-mode-hook
+      clojure-mode-hook
+      scheme-mode-hook))
+#+end_src
+
+*** Tangle config
+
+#+begin_src emacs-lisp
+  (add-hook 'kill-emacs-hook (lambda ()
+                               (org-babel-tangle "~/.emacs.d/init.org")))
+#+end_src
+
 ** Custom Functions
 *** Interactive Functions
 
@@ -291,15 +310,17 @@ Only enable the electrip pair mode in the programming mode
     (dlet ((eshell-buffer-name "*eshell session*"))
       (cond ((equal (get-buffer eshell-buffer-name) (window-buffer (selected-window))) 
              (select-window (get-mru-window t t t))) ;; Focused on eshell buffer
-
             ((get-buffer-window eshell-buffer-name)
              (switch-to-buffer-other-window eshell-buffer-name)) ;; Visible in frame
-
             (t
              (let ((buf (eshell))) ;; Buffer does not exist
                (display-buffer buf '(display-buffer-below-selected . ((window-height . 10))))
                (switch-to-buffer (other-buffer buf))
                (switch-to-buffer-other-window buf))))))
+
+  (defun my-open-dired()
+    (interactive)
+    (dired default-directory))
 #+end_src
 
 ** Bookmarks 
@@ -330,45 +351,27 @@ Only enable the electrip pair mode in the programming mode
 #+end_src
 
 * Packages
-** Straight Config
-
-Bootstraps straight.el
+** Package Config
 
 #+begin_src emacs-lisp
-  ; Straight bootstrap
-  (setq straight-check-for-modifications nil)
-
   (defvar bootstrap-version)
-
   (let ((bootstrap-file
-         (expand-file-name
-          "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
-        (bootstrap-version 5))
+         (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
+        (bootstrap-version 6))
     (unless (file-exists-p bootstrap-file)
       (with-current-buffer
           (url-retrieve-synchronously
-           "https://raw.githubusercontent.com/raxod502/straight.el/develop/install.el"
+           "https://raw.githubusercontent.com/radian-software/straight.el/develop/install.el"
            'silent 'inhibit-cookies)
         (goto-char (point-max))
         (eval-print-last-sexp)))
     (load bootstrap-file nil 'nomessage))
 
-  ; Straight config
   (straight-use-package 'use-package)
   (setq straight-use-package-by-default t)
 #+end_src
 
 ** Text Editing
-*** ParEdit
-
-#+begin_src emacs-lisp
-  (use-package evil-cleverparens
-    :hook
-    (clojure-mode . evil-cleverparens-mode)
-    (emacs-lisp-mode . evil-cleverparens-mode)
-    (scheme-mode . evil-cleverparens-mode))
-#+end_src
-
 *** General (Key definitions)
 
 #+begin_src emacs-lisp
@@ -385,7 +388,8 @@ Bootstraps straight.el
      ;; Applications
      "a" '(nil :which-key "applications")
      "ag" '(magit-status :which-key "magit")
-     "ad" '(my-switch-to-dashboard-buffer :which-key "dashboard")
+     "ad" '(my-open-dired :which-key "dired")
+     "aD" '(my-switch-to-dashboard-buffer :which-key "dashboard")
      "as" '(my-open-eshell :which-key "eshell")
 
      ;; Buffes 
@@ -424,6 +428,15 @@ Bootstraps straight.el
      "hf" '(describe-function :which-key "describe function")
      "hF" '(describe-face :which-key "describe face")
      "hv" '(describe-variable :which-key "describe variable")))
+#+end_src
+
+*** Lispyville
+
+#+begin_src emacs-lisp
+  (use-package lispyville
+    :ghook my-lisp-mode-hooks
+    :config
+    (lispyville-set-key-theme '(slurp/barf-lispy wrap operators c-w additional commentary)))
 #+end_src
 
 ** Evil mode
@@ -488,6 +501,14 @@ Make using emacs a good experience
 #+end_src
 
 ** Quality of life
+*** Mu4e
+
+#+begin_src emacs-lisp
+  (use-package mu4e
+    :straight (:pre-build ())
+    :commands mu4e)
+#+end_src
+
 *** Vertico
 
 Better menu for M-x, find-file, etc..
@@ -516,13 +537,15 @@ Better menu for M-x, find-file, etc..
 **** Consult LSP
 
 #+begin_src emacs-lisp
-  (use-package consult-lsp)
+  (use-package consult-lsp
+    :commands (consult-lsp-symbols consult-lsp-diagnostics consult-lsp-file-symbols))
 #+end_src
 
 **** Consult Flycheck
 
 #+begin_src emacs-lisp
-  (use-package consult-flycheck)
+  (use-package consult-flycheck
+    :commands (consult-flycheck))
 #+end_src
 
 *** Which key
@@ -647,26 +670,26 @@ Use direnv when changind directories in emacs
 *** Org Package
 
 #+begin_src emacs-lisp
-  (defun my-org-mode-setup ()
-    (display-line-numbers-mode 0)
-
-    (org-indent-mode)
-    ;; (variable-pitch-mode 1)
-    (auto-fill-mode 0)
-    (visual-line-mode 1)
-
-    ;; Org tempo
-    (require 'org-tempo)
-
-    (add-to-list 'org-structure-template-alist '("sh" . "src shell"))
-    (add-to-list 'org-structure-template-alist '("el" . "src emacs-lisp"))
-    (add-to-list 'org-structure-template-alist '("py" . "src python")))
-
   (use-package org
     :init
     (org-babel-do-load-languages
      'org-babel-load-languages
      '((python . t)))
+
+    (defun my-org-mode-setup ()
+      (display-line-numbers-mode 0)
+
+      (org-indent-mode)
+      (auto-fill-mode 0)
+      (visual-line-mode 1)
+
+      ;; Org tempo
+      (require 'org-tempo)
+      (require 'org-agenda)
+
+      (add-to-list 'org-structure-template-alist '("sh" . "src shell"))
+      (add-to-list 'org-structure-template-alist '("el" . "src emacs-lisp"))
+      (add-to-list 'org-structure-template-alist '("py" . "src python")))
     :hook
     (org-mode . my-org-mode-setup)
     :config
@@ -680,17 +703,22 @@ Use direnv when changind directories in emacs
 #+begin_src emacs-lisp
   (use-package org-bullets
     :after org
-    :hook (org-mode . org-bullets-mode))
+    :hook (org-mode . org-bullets-mode)
+    :custom
+    (org-bullets-bullet-list '("●" "○" "●" "○" "●" "○" "●")))
 
-
-  (setq org-bullets-face-name "BlexMono Nerd Font")
 #+end_src
 
 *** Org Present
-
 #+begin_src emacs-lisp
   (use-package org-present
     :commands (org-present))
+#+end_src
+
+*** Org Agenda
+
+#+begin_src emacs-lisp
+  (setq org-agenda-files '("~/doc/agenda"))
 #+end_src
 
 ** Text Completion
@@ -733,7 +761,7 @@ Use direnv when changind directories in emacs
     :custom
     (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
     (corfu-auto t)                 ;; Enable auto completion
-    (corfu-auto-delay 0)
+    (corfu-auto-delay 0.1)
     (corfu-auto-prefix 3)
     (corfu-separator ?\s)             ;; Orderless field separator
     (corfu-quit-at-boundary 'separator)      ;; Never quit at completion boundary
@@ -744,6 +772,16 @@ Use direnv when changind directories in emacs
       "Enable Corfu in the minibuffer if `completion-at-point' is bound."
       (when (where-is-internal #'completion-at-point (list (current-local-map)))
         (corfu-mode 1)))
+
+    (mapc #'evil-declare-ignore-repeat
+          '(corfu-next
+            corfu-previous
+            corfu-first
+            corfu-last))
+
+    (mapc #'evil-declare-change-repeat
+          '(corfu-insert
+            corfu-complete))
     :bind
     (:map corfu-map
           ("C-s" . corfu-quit)
@@ -859,16 +897,20 @@ Use direnv when changind directories in emacs
 #+end_src
 
 ** UI
-*** Acme Theme
+*** Modus themes
 
 #+begin_src emacs-lisp
-  (use-package acme-theme
-    :straight
-    (:local-repo "/home/cassio/src/acme-emacs-theme")
+  (use-package modus-themes
     :custom
-    (acme-theme-black-fg t)
+    (modus-themes-org-blocks 'gray-background)
+    (modus-themes-italic-constructs t)
+    (modus-themes-subtle-line-numbers t)
+    (modus-themes-syntax '(green-strings faint))
+    (modus-themes-paren-match '(bold))
+    (modus-themes-mode-line '(borderless))
     :init
-    (load-theme 'acme t))
+    (load-theme 'modus-vivendi t))
+
 #+end_src
 
 *** Doom modeline
@@ -892,9 +934,13 @@ Use direnv when changind directories in emacs
 
 #+begin_src emacs-lisp
   (use-package dashboard
+    :init
+    (custom-set-faces
+     '(dashboard-items-face ((t (:inherit default)))))
     :config
     (setq initial-buffer-choice (lambda () (get-buffer-create "*dashboard*")))
     :custom
     (dashboard-startup-banner 'logo)
     (dashboard-center-content t))
 #+end_src
+

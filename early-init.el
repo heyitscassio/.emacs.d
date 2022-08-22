@@ -32,6 +32,3 @@
 (setq read-process-output-max (* 1024 1024)) ;; 1mb
 
 (setq package-enable-at-startup nil)
-
-(require 'org)
-(org-babel-tangle-file "/home/cassio/.emacs.d/init.org")
