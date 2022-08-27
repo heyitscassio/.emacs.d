@@ -171,7 +171,8 @@ Remove ugly stuff, add pretty stuff
   ;; (load-theme 'mplex t)
 
   ; Line number mode
-  (setq display-line-numbers-type 'relative)
+  (setq display-line-numbers-type 'relative
+        display-line-numbers-width-start t)
 
   (global-display-line-numbers-mode)
 
@@ -198,11 +199,12 @@ Set the font /main-font/, if not avaliable, use /monospace/ as a fallback
 
 #+begin_src elisp
   (defun my-set-font-faces ()
-    (let* ((main-font "Go Mono")
-           (fallback "monospace")
-           (font (if (x-list-fonts main-font) main-font fallback)))
-      (set-face-attribute 'default nil :font font :height 90)
-      (set-face-attribute 'fixed-pitch nil :font font :height 90)))
+    (if window-system
+        (let* ((main-font "Go Mono")
+               (fallback "monospace")
+               (font (if (x-list-fonts main-font) main-font fallback)))
+          (set-face-attribute 'default nil :font font :height 90)
+          (set-face-attribute 'fixed-pitch nil :font font :height 90))))
 
   (if (daemonp)
       (add-hook 'after-make-frame-functions
@@ -321,6 +323,10 @@ Only enable the electrip pair mode in the programming mode
   (defun my-open-dired()
     (interactive)
     (dired default-directory))
+
+  (defun my-tangle-config ()
+    (interactive)
+    (org-babel-tangle "~/.emacs.d/init.org"))
 #+end_src
 
 ** Bookmarks 
@@ -377,6 +383,10 @@ Only enable the electrip pair mode in the programming mode
 #+begin_src emacs-lisp
   (use-package general
     :init
+    (general-create-definer my-local-leader-def
+      :states '(normal motion visual)
+      :prefix ",")
+
     (general-define-key
      :states '(normal motion visual)
      :keymaps 'override
@@ -501,6 +511,14 @@ Make using emacs a good experience
 #+end_src
 
 ** Quality of life
+*** Pyenv
+
+#+begin_src emacs-lisp
+  (use-package pyvenv
+    :hook
+    (python-mode . pyvenv-mode))
+#+end_src
+
 *** Mu4e
 
 #+begin_src emacs-lisp
@@ -600,6 +618,15 @@ Use direnv when changind directories in emacs
     (eldoc-echo-area-display-truncation-message nil))
 #+end_src
 
+*** Acutex
+
+#+begin_src emacs-lisp
+  (use-package tex-mode
+    :straight `(auctex :local-repo "~/.nix-profile/share/emacs/site-lisp/auctex") ;; this just says to use the version I downloaded from guix, since it did all the system config
+    ;; :straight 'auctex
+    :mode "\\.tex\\'")
+#+end_src
+
 ** Language modes
 *** Yaml
 
@@ -641,14 +668,28 @@ Use direnv when changind directories in emacs
 *** Clojure
 
 #+begin_src emacs-lisp
-  (use-package clojure-mode)
 
   (use-package cider
+    :custom
+    (cider-show-error-buffer nil)
+    (cider-eval-result-duration 'change)
+    :general
+    (my-local-leader-def
+      :keymaps 'clojure-mode-map
+      "e" '(nil :which-key "eval")
+      "E" '(my-evil-cider-eval-region :which-key "Eval outermost sexp")
+      "eb" '(cider-eval-buffer :which-key "Eval buffer")
+      "ee" '(cider-eval-last-sexp :which-key "Eval last sexp")
+      "er" '(cider-eval-list-at-point :which-key "Eval outermost sexp"))
     :init
-
-    (add-to-list 'completion-category-defaults '(cider (styles basic)))
-
-    (setq cider-show-error-buffer nil))
+    (defun my-evil-cider-eval-region ()
+      (interactive)
+      (let ((range (evil-operator-range)))
+        (cider-interactive-eval nil
+                                nil
+                                range
+                                (cider--nrepl-pr-request-map))))
+    (add-to-list 'completion-category-defaults '(cider (styles basic))))
 #+end_src
 
 *** Python
@@ -866,7 +907,7 @@ Use direnv when changind directories in emacs
 
     (use-package lsp-ui :commands lsp-ui-mode)
 
-    (setq lsp-enabled-clients '(pyright jedi clojure-lsp gopls clang))
+    (setq lsp-enabled-clients '(jedi clojure-lsp gopls clang))
 
     :hook ((clojure-mode . lsp-deferred)
            (go-mode . lsp-deferred)
@@ -880,20 +921,19 @@ Use direnv when changind directories in emacs
            (lsp-mode . lsp-enable-which-key-integration))
     :commands lsp lsp-deferred)
 
-  (use-package lsp-jedi
-    :defer t)
+  (use-package lsp-jedi)
 
-  (use-package lsp-pyright
-    :defer t
-    :custom
-    (lsp-pyright-auto-import-completions nil)
-    :init
-    (defun my-python-setup ()
+  ;; (use-package lsp-pyright
+  ;;   :defer t
+  ;;   :custom
+  ;;   (lsp-pyright-auto-import-completions nil)
+  ;;   :init
+  ;;   (defun my-python-setup ()
 
-      (require 'lsp-pyright)
-      (lsp-deferred))
-    :hook
-    (python-mode . my-python-setup))
+  ;;     (require 'lsp-pyright)
+  ;;     (lsp-deferred))
+  ;;   :hook
+  ;;   (python-mode . my-python-setup))
 #+end_src
 
 ** UI
@@ -943,4 +983,3 @@ Use direnv when changind directories in emacs
     (dashboard-startup-banner 'logo)
     (dashboard-center-content t))
 #+end_src
-

@@ -53,7 +53,8 @@
 ;; (load-theme 'mplex t)
 
 ; Line number mode
-(setq display-line-numbers-type 'relative)
+(setq display-line-numbers-type 'relative
+      display-line-numbers-width-start t)
 
 (global-display-line-numbers-mode)
 
@@ -70,11 +71,12 @@
   (window-divider-mode)
 
 (defun my-set-font-faces ()
-  (let* ((main-font "Go Mono")
-         (fallback "monospace")
-         (font (if (x-list-fonts main-font) main-font fallback)))
-    (set-face-attribute 'default nil :font font :height 90)
-    (set-face-attribute 'fixed-pitch nil :font font :height 90)))
+  (if window-system
+      (let* ((main-font "Go Mono")
+             (fallback "monospace")
+             (font (if (x-list-fonts main-font) main-font fallback)))
+        (set-face-attribute 'default nil :font font :height 90)
+        (set-face-attribute 'fixed-pitch nil :font font :height 90))))
 
 (if (daemonp)
     (add-hook 'after-make-frame-functions
@@ -158,6 +160,10 @@
   (interactive)
   (dired default-directory))
 
+(defun my-tangle-config ()
+  (interactive)
+  (org-babel-tangle "~/.emacs.d/init.org"))
+
 (setq bookmark-save-flag 1
       bookmark-set-fringe-mark nil)
 
@@ -191,6 +197,10 @@
 
 (use-package general
   :init
+  (general-create-definer my-local-leader-def
+    :states '(normal motion visual)
+    :prefix ",")
+
   (general-define-key
    :states '(normal motion visual)
    :keymaps 'override
@@ -289,6 +299,10 @@
 (use-package evil-commentary
   :init (evil-commentary-mode))
 
+(use-package pyvenv
+  :hook
+  (python-mode . pyvenv-mode))
+
 (use-package mu4e
   :straight (:pre-build ())
   :commands mu4e)
@@ -340,6 +354,11 @@
   (eldoc-echo-area-use-multiline-p 2)
   (eldoc-echo-area-display-truncation-message nil))
 
+(use-package tex-mode
+  :straight `(auctex :local-repo "~/.nix-profile/share/emacs/site-lisp/auctex") ;; this just says to use the version I downloaded from guix, since it did all the system config
+  ;; :straight 'auctex
+  :mode "\\.tex\\'")
+
 (use-package yaml-mode)
 
 (use-package fish-mode)
@@ -353,14 +372,27 @@
 (use-package nix-mode
   :mode "\\.nix\\'")
 
-(use-package clojure-mode)
-
 (use-package cider
+  :custom
+  (cider-show-error-buffer nil)
+  (cider-eval-result-duration 'change)
+  :general
+  (my-local-leader-def
+    :keymaps 'clojure-mode-map
+    "e" '(nil :which-key "eval")
+    "E" '(my-evil-cider-eval-region :which-key "Eval outermost sexp")
+    "eb" '(cider-eval-buffer :which-key "Eval buffer")
+    "ee" '(cider-eval-last-sexp :which-key "Eval last sexp")
+    "er" '(cider-eval-list-at-point :which-key "Eval outermost sexp"))
   :init
-
-  (add-to-list 'completion-category-defaults '(cider (styles basic)))
-
-  (setq cider-show-error-buffer nil))
+  (defun my-evil-cider-eval-region ()
+    (interactive)
+    (let ((range (evil-operator-range)))
+      (cider-interactive-eval nil
+                              nil
+                              range
+                              (cider--nrepl-pr-request-map))))
+  (add-to-list 'completion-category-defaults '(cider (styles basic))))
 
 (use-package python-mode
   :defer t
@@ -522,7 +554,7 @@
 
   (use-package lsp-ui :commands lsp-ui-mode)
 
-  (setq lsp-enabled-clients '(pyright jedi clojure-lsp gopls clang))
+  (setq lsp-enabled-clients '(jedi clojure-lsp gopls clang))
 
   :hook ((clojure-mode . lsp-deferred)
          (go-mode . lsp-deferred)
@@ -536,20 +568,19 @@
          (lsp-mode . lsp-enable-which-key-integration))
   :commands lsp lsp-deferred)
 
-(use-package lsp-jedi
-  :defer t)
+(use-package lsp-jedi)
 
-(use-package lsp-pyright
-  :defer t
-  :custom
-  (lsp-pyright-auto-import-completions nil)
-  :init
-  (defun my-python-setup ()
+;; (use-package lsp-pyright
+;;   :defer t
+;;   :custom
+;;   (lsp-pyright-auto-import-completions nil)
+;;   :init
+;;   (defun my-python-setup ()
 
-    (require 'lsp-pyright)
-    (lsp-deferred))
-  :hook
-  (python-mode . my-python-setup))
+;;     (require 'lsp-pyright)
+;;     (lsp-deferred))
+;;   :hook
+;;   (python-mode . my-python-setup))
 
 (use-package modus-themes
   :custom
