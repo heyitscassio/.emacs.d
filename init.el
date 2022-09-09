@@ -125,6 +125,9 @@
 (add-hook 'kill-emacs-hook (lambda ()
                              (org-babel-tangle "~/.emacs.d/init.org")))
 
+(add-hook 'prog-mode-hook (lambda ()
+                            (prettify-symbols-mode)))
+
 ;; Switch to the scratch buffer
 (defun my-switch-to-scratch-buffer ()
   (interactive)
@@ -177,6 +180,16 @@
 (add-to-list 'exec-path
              (concat (getenv "HOME") "/.local/bin"))
 
+;; (setq eshell-prompt-regexp "^[^#$\n]*[#$] "
+;;       eshell-prompt-function
+;;       (lambda nil
+;;         (concat
+;;          "[" (user-login-name) "@" (system-name) " "
+;;          (if (string= (eshell/pwd) (getenv "HOME"))
+;;              "~" (eshell/basename (eshell/pwd)))
+;;          "]"
+;;          (if (= (user-uid) 0) "# " "$ "))))
+
 (setq eshell-banner-message "")
 
 (defvar bootstrap-version)
@@ -211,6 +224,7 @@
 
    ;; Applications
    "a" '(nil :which-key "applications")
+   "aa" '(org-agenda-list :which-key "applications")
    "ag" '(magit-status :which-key "magit")
    "ad" '(my-open-dired :which-key "dired")
    "aD" '(my-switch-to-dashboard-buffer :which-key "dashboard")
@@ -299,6 +313,10 @@
 (use-package evil-commentary
   :init (evil-commentary-mode))
 
+(use-package editorconfig
+  :config
+  (editorconfig-mode))
+
 (use-package pyvenv
   :hook
   (python-mode . pyvenv-mode))
@@ -334,7 +352,16 @@
 
 (use-package pulsar
   :init
-  (pulsar-global-mode))
+  (pulsar-global-mode)
+  :config
+  (setq pulsar-pulse-functions (append pulsar-pulse-functions
+                                       '(evil-scroll-down
+                                         evil-scroll-up
+                                         evil-window-down
+                                         evil-window-up
+                                         evil-window-left
+                                         evil-window-right
+                                         evil-window-next))))
 
 (use-package direnv
   :config
@@ -355,9 +382,15 @@
   (eldoc-echo-area-display-truncation-message nil))
 
 (use-package tex-mode
-  :straight `(auctex :local-repo "~/.nix-profile/share/emacs/site-lisp/auctex") ;; this just says to use the version I downloaded from guix, since it did all the system config
+  :straight `(auctex
+              :type nil
+              :local-repo "~/.nix-profile/share/emacs/site-lisp/auctex")
   ;; :straight 'auctex
   :mode "\\.tex\\'")
+
+(use-package eshell
+  :hook
+  (eshell-mode . (lambda () (display-line-numbers-mode -1))))
 
 (use-package yaml-mode)
 
@@ -401,6 +434,10 @@
 
 (use-package scad-mode)
 
+;; (use-package typescript-mode)
+
+;; (use-package ng2-mode)
+
 (use-package org
   :init
   (org-babel-do-load-languages
@@ -427,16 +464,18 @@
   (setq org-ellipsis " ▼"
         org-hide-emphasis-markers t))
 
-(use-package org-bullets
-  :after org
-  :hook (org-mode . org-bullets-mode)
-  :custom
-  (org-bullets-bullet-list '("●" "○" "●" "○" "●" "○" "●")))
-
 (use-package org-present
   :commands (org-present))
 
 (setq org-agenda-files '("~/doc/agenda"))
+
+(use-package org-wild-notifier
+  :custom
+  (org-wild-notifier-alert-time '(10 5))
+  (alert-default-style 'libnotify)
+  (org-wild-notifier-keyword-whitelist '())
+  :config
+  (org-wild-notifier-mode))
 
 (use-package orderless
   :config
@@ -554,9 +593,10 @@
 
   (use-package lsp-ui :commands lsp-ui-mode)
 
-  (setq lsp-enabled-clients '(jedi clojure-lsp gopls clang))
+  (setq lsp-enabled-clients '(jedi clojure-lsp gopls clang ts-ls tailwindcss))
 
   :hook ((clojure-mode . lsp-deferred)
+         (clojurescript-mode . lsp-deferred)
          (go-mode . lsp-deferred)
          (python-mode . lsp-deferred)
          (python-mode . (lambda ()
@@ -581,6 +621,12 @@
 ;;     (lsp-deferred))
 ;;   :hook
 ;;   (python-mode . my-python-setup))
+
+(use-package lsp-tailwindcss
+  :init
+  (setq lsp-tailwindcss-add-on-mode t)
+  :config
+  (setq lsp-tailwindcss-major-modes '(clojure-mode clojurescript-mode web-mode css-mode)))
 
 (use-package modus-themes
   :custom
