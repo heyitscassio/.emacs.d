@@ -65,6 +65,8 @@
 ;; But don't resize pixelwise
 (setq window-resize-pixelwise nil)
 
+(setq-default show-trailing-whitespace t)
+
 (setq window-divider-default-right-width 3
         window-divider-default-left-width 3)
 
@@ -224,11 +226,12 @@
 
    ;; Applications
    "a" '(nil :which-key "applications")
-   "aa" '(org-agenda-list :which-key "applications")
+   "aa" '(org-agenda-list :which-key "agenda")
    "ag" '(magit-status :which-key "magit")
    "ad" '(my-open-dired :which-key "dired")
    "aD" '(my-switch-to-dashboard-buffer :which-key "dashboard")
    "as" '(my-open-eshell :which-key "eshell")
+   "am" '(emms-smart-browse :which-key "EMMS")
 
    ;; Buffes 
    "b" '(nil :which-key "buffer")
@@ -313,6 +316,11 @@
 (use-package evil-commentary
   :init (evil-commentary-mode))
 
+(use-package evil-goggles
+  :after evil
+  :init
+  (evil-goggles-mode))
+
 (use-package editorconfig
   :config
   (editorconfig-mode))
@@ -324,6 +332,13 @@
 (use-package mu4e
   :straight (:pre-build ())
   :commands mu4e)
+
+(use-package marginalia
+  :bind
+  (:map minibuffer-local-map
+        ("M-A" . marginalia-cycle))
+  :init
+  (marginalia-mode))
 
 (use-package vertico
   :custom
@@ -391,6 +406,10 @@
 (use-package eshell
   :hook
   (eshell-mode . (lambda () (display-line-numbers-mode -1))))
+
+(use-package ispell
+  :init
+  (setq ispell-program-name (executable-find "aspell")))
 
 (use-package yaml-mode)
 
@@ -656,3 +675,11 @@
   :custom
   (dashboard-startup-banner 'logo)
   (dashboard-center-content t))
+
+(use-package emms
+  :config
+  (require 'emms-setup)
+  (require 'emms-player-mpd)
+  (emms-all)
+  (setq emms-player-list '(emms-player-mpd))
+  (setq emms-info-functions '(emms-info-mpd)))
