@@ -90,6 +90,10 @@
           (lambda ()
             (electric-pair-local-mode t)))
 
+(add-hook 'cider-repl-mode-hook
+          (lambda ()
+            (electric-pair-local-mode t)))
+
 (add-hook 'org-present-mode-hook
           (lambda ()
             (visual-fill-column-mode 1)
@@ -295,8 +299,19 @@
         evil-want-Y-yank-to-eol t
         evil-search-module 'evil-search)
 
+  (defun my-elisp-lookup ()
+    (interactive)
+    (let ((sym (symbol-at-point)))
+      (if sym
+          (describe-symbol (symbol-at-point))
+        (message "Invalid symbol"))))
+
   :custom
   (evil-want-keybinding nil)
+  :hook
+  (emacs-lisp-mode . (lambda ()
+                  (message "penis")
+                  (setq evil-lookup-func #'my-elisp-lookup)))
   :config
   (evil-mode 1))
 
@@ -320,6 +335,14 @@
   :after evil
   :init
   (evil-goggles-mode))
+
+(use-package evil-snipe
+  :custom
+  (evil-snipe-smart-case t)
+  (evil-snipe-tab-increment t)
+  (evil-snipe-scope 'visible)
+  :init
+  (evil-snipe-mode))
 
 (use-package editorconfig
   :config
@@ -411,6 +434,9 @@
   :init
   (setq ispell-program-name (executable-find "aspell")))
 
+(use-package restclient
+  :commands restclient-mode)
+
 (use-package yaml-mode)
 
 (use-package fish-mode)
@@ -428,6 +454,7 @@
   :custom
   (cider-show-error-buffer nil)
   (cider-eval-result-duration 'change)
+  (cider-clojure-cli-global-options "-Adev")
   :general
   (my-local-leader-def
     :keymaps 'clojure-mode-map
@@ -558,6 +585,7 @@
         ([backtab] . corfu-previous))
   :hook ((prog-mode . corfu-mode)
          (shell-mode . corfu-mode)
+         (cider-repl-mode . corfu-mode)
          (minibuffer-setup . corfu-enable-in-minibuffer)
          (eshell-mode . corfu-mode)))
 
