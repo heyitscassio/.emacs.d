@@ -310,7 +310,6 @@
   (evil-want-keybinding nil)
   :hook
   (emacs-lisp-mode . (lambda ()
-                  (message "penis")
                   (setq evil-lookup-func #'my-elisp-lookup)))
   :config
   (evil-mode 1))
@@ -709,5 +708,7 @@
   (require 'emms-setup)
   (require 'emms-player-mpd)
   (emms-all)
+  (setq emms-source-file-default-directory "/mnt/extern/music/")
   (setq emms-player-list '(emms-player-mpd))
-  (setq emms-info-functions '(emms-info-mpd)))
+  (setq emms-info-functions '(emms-info-mpd))
+  (setq emms-browser-covers #'emms-browser-cache-thumbnail-async))

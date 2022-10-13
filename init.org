@@ -1,4 +1,4 @@
-#+TITLE: Cássio's Emacs Config 
+#+TITLE: Cássio's Emacs Config
 #+AUTHOR: Cássio Ávila
 #+PROPERTY: header-args :results silent :tangle yes
 #+STARTUP: content
@@ -512,7 +512,6 @@ Make using emacs a good experience
     (evil-want-keybinding nil)
     :hook
     (emacs-lisp-mode . (lambda ()
-                    (message "penis")
                     (setq evil-lookup-func #'my-elisp-lookup)))
     :config
     (evil-mode 1))
@@ -1120,7 +1119,8 @@ Use direnv when changind directories in emacs
     (require 'emms-setup)
     (require 'emms-player-mpd)
     (emms-all)
+    (setq emms-source-file-default-directory "/mnt/extern/music/")
     (setq emms-player-list '(emms-player-mpd))
-    (setq emms-info-functions '(emms-info-mpd)))
+    (setq emms-info-functions '(emms-info-mpd))
+    (setq emms-browser-covers #'emms-browser-cache-thumbnail-async))
 #+end_src
-
