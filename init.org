@@ -202,7 +202,7 @@ Set the font /main-font/, if not avaliable, use /monospace/ as a fallback
 #+begin_src elisp
   (defun my-set-font-faces ()
     (if window-system
-        (let* ((main-font "Go Mono")
+        (let* ((main-font "Go Mono Nerd Font")
                (fallback "monospace")
                (font (if (x-list-fonts main-font) main-font fallback)))
           (set-face-attribute 'default nil :font font :height 90)
@@ -922,7 +922,7 @@ Use direnv when changind directories in emacs
     (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
     (corfu-auto t)                 ;; Enable auto completion
     (corfu-auto-delay 0.1)
-    (corfu-auto-prefix 3)
+    (corfu-auto-prefix 2)
     (corfu-separator ?\s)             ;; Orderless field separator
     (corfu-quit-at-boundary 'separator)      ;; Never quit at completion boundary
     (corfu-quit-no-match nil)           ;; Never quit, even if there is no match
@@ -1000,67 +1000,72 @@ Use direnv when changind directories in emacs
 ** LSP
 *** LSP mode
 #+begin_src emacs-lisp
-  (use-package lsp-mode
-    :custom
-    (lsp-completion-provider :none)
-    (lsp-keymap-prefix "C-c l")
-    (lsp-headerline-breadcrumb-enable nil)
-    (lsp-modeline-code-action-fallback-icon "?")
-    (lsp-modeline-code-actions-segments '(icon count))
-    :init
-    (defun my-lsp-mode-setup-completion ()
-      (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
-            '(orderless)))
-
-    (defun my-update-completions-list ()
-      (progn
-        (fset 'non-greedy-lsp
-              (cape-capf-properties #'lsp-completion-at-point :exclusive 'no))
-        (setq completion-at-point-functions
-              '(non-greedy-lsp cape-file))))
-
-    (defun my-lsp-python-setup ()
-      (add-hook 'lsp-configure-hook
-                (lambda ()
-                      (when lsp-auto-configure
-                        (flycheck-add-next-checker 'lsp 'python-pyright)))))
-
-    (use-package lsp-ui :commands lsp-ui-mode)
-
-    (setq lsp-enabled-clients '(jedi clojure-lsp gopls clang ts-ls tailwindcss))
-
-    :hook ((clojure-mode . lsp-deferred)
-           (clojurescript-mode . lsp-deferred)
-           (go-mode . lsp-deferred)
-           (python-mode . lsp-deferred)
-           (python-mode . (lambda ()
-                            (advice-add #'my-lsp-python-setup
-                                        :after #'lsp-configure-buffer)))
-           (lsp-completion-mode . my-lsp-mode-setup-completion)
-           (lsp-completion-mode . my-update-completions-list)
-           (lsp-mode . yas-minor-mode)
-           (lsp-mode . lsp-enable-which-key-integration))
-    :commands lsp lsp-deferred)
-
-  (use-package lsp-jedi)
-
-  ;; (use-package lsp-pyright
-  ;;   :defer t
+  ;; (use-package lsp-mode
   ;;   :custom
-  ;;   (lsp-pyright-auto-import-completions nil)
+  ;;   (lsp-completion-provider :none)
+  ;;   (lsp-keymap-prefix "C-c l")
+  ;;   (lsp-headerline-breadcrumb-enable nil)
+  ;;   (lsp-modeline-code-action-fallback-icon "?")
+  ;;   (lsp-modeline-code-actions-segments '(icon count))
   ;;   :init
-  ;;   (defun my-python-setup ()
+  ;;   (defun my-lsp-mode-setup-completion ()
+  ;;     (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
+  ;;           '(orderless)))
 
-  ;;     (require 'lsp-pyright)
-  ;;     (lsp-deferred))
-  ;;   :hook
-  ;;   (python-mode . my-python-setup))
+  ;;   (defun my-update-completions-list ()
+  ;;     (progn
+  ;;       (fset 'non-greedy-lsp
+  ;;             (cape-capf-properties #'lsp-completion-at-point :exclusive 'no))
+  ;;       (setq completion-at-point-functions
+  ;;             '(non-greedy-lsp cape-file))))
 
-  (use-package lsp-tailwindcss
-    :init
-    (setq lsp-tailwindcss-add-on-mode t)
-    :config
-    (setq lsp-tailwindcss-major-modes '(clojure-mode clojurescript-mode web-mode css-mode)))
+  ;;   (defun my-lsp-python-setup ()
+  ;;     (add-hook 'lsp-configure-hook
+  ;;               (lambda ()
+  ;;                     (when lsp-auto-configure
+  ;;                       (flycheck-add-next-checker 'lsp 'python-pyright)))))
+
+  ;;   (use-package lsp-ui :commands lsp-ui-mode)
+
+  ;;   (setq lsp-enabled-clients '(elixir-ls jedi clojure-lsp gopls clang ts-ls tailwindcss))
+
+  ;;   :hook ((clojure-mode . lsp-deferred)
+  ;;          (clojurescript-mode . lsp-deferred)
+  ;;          (go-mode . lsp-deferred)
+  ;;          (python-mode . lsp-deferred)
+  ;;          (python-mode . (lambda ()
+  ;;                           (advice-add #'my-lsp-python-setup
+  ;;                                       :after #'lsp-configure-buffer)))
+  ;;          (lsp-completion-mode . my-lsp-mode-setup-completion)
+  ;;          (lsp-completion-mode . my-update-completions-list)
+  ;;          (lsp-mode . yas-minor-mode)
+  ;;          (lsp-mode . lsp-enable-which-key-integration))
+  ;;   :commands lsp lsp-deferred)
+
+  ;; (use-package lsp-jedi)
+
+  ;; ;; (use-package lsp-pyright
+  ;; ;;   :defer t
+  ;; ;;   :custom
+  ;; ;;   (lsp-pyright-auto-import-completions nil)
+  ;; ;;   :init
+  ;; ;;   (defun my-python-setup ()
+
+  ;; ;;     (require 'lsp-pyright)
+  ;; ;;     (lsp-deferred))
+  ;; ;;   :hook
+  ;; ;;   (python-mode . my-python-setup))
+
+  ;; (use-package lsp-tailwindcss
+  ;;   :init
+  ;;   (setq lsp-tailwindcss-add-on-mode t)
+  ;;   :config
+  ;;   (setq lsp-tailwindcss-major-modes '(clojure-mode clojurescript-mode web-mode css-mode)))
+#+end_src
+*** Eglot
+
+#+begin_src emacs-lisp
+  (use-package eglot)
 #+end_src
 
 ** UI
@@ -1122,5 +1127,7 @@ Use direnv when changind directories in emacs
     (setq emms-source-file-default-directory "/mnt/extern/music/")
     (setq emms-player-list '(emms-player-mpd))
     (setq emms-info-functions '(emms-info-mpd))
-    (setq emms-browser-covers #'emms-browser-cache-thumbnail-async))
+    (setq emms-browser-covers #'emms-browser-cache-thumbnail-async)
+    (setq emms-browser-thumbnail-small-size 64)
+    (setq emms-browser-thumbnail-medium-size 128))
 #+end_src
