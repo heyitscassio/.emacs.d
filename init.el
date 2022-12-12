@@ -237,7 +237,7 @@
    "as" '(my-open-eshell :which-key "eshell")
    "am" '(emms-smart-browse :which-key "EMMS")
 
-   ;; Buffes 
+   ;; Buffes
    "b" '(nil :which-key "buffer")
    "ba" '(bookmark-set :which-key "set bookmark")
    "bb" '(consult-buffer :which-key "switch buffers")
@@ -251,6 +251,7 @@
    "f" '(nil :which-key "files")
    "fb" '(consult-bookmark :which-key "bookmarks")
    "ff" '(find-file :which-key "find file")
+   "fp" '(project-switch-project :which-key "Switch project")
    "fr" '(consult-recent-file :which-key "recent files")
    "fR" '(rename-file :which-key "rename file")
    "fs" '(save-buffer :which-key "save buffer")
@@ -436,6 +437,51 @@
 (use-package restclient
   :commands restclient-mode)
 
+(use-package sideline
+  :init
+  (setq sideline-backends-right '(sideline-flymake))
+  (global-sideline-mode))
+
+(use-package sideline-flymake
+  :custom
+  (sideline-flymake-display-mode 'line))
+
+(use-package eros
+  :init
+  (eros-mode))
+
+(use-package project
+  :init
+  (setq project-clj-ignore-files '("target" ".clj-kondo"))
+
+  (defun my-project-try-clj (dir)
+    (let ((lein (locate-dominating-file dir "project.clj"))
+          (clj (locate-dominating-file dir "deps.edn")))
+      (cond (lein (cons 'lein lein))
+            (clj (cons 'clj clj))
+            (t nil))))
+
+  (cl-defmethod project-root ((project (head clj)))
+    (cdr project))
+
+  (cl-defmethod project-root ((project (head lein)))
+    (cdr project))
+
+  (cl-defmethod project-ignores ((project (head clj)) dir)
+    (mapcar
+     (lambda (dir)
+       (concat dir "/"))
+     project-clj-ignore-files))
+
+  (cl-defmethod project-ignores ((project (head lein)) dir)
+    (mapcar
+     (lambda (dir)
+       (concat dir "/"))
+     project-clj-ignore-files))
+
+  :config
+  (add-to-list 'project-find-functions #'my-project-try-clj))
+
 (use-package yaml-mode)
 
 (use-package fish-mode)
@@ -588,14 +634,6 @@
          (minibuffer-setup . corfu-enable-in-minibuffer)
          (eshell-mode . corfu-mode)))
 
-(use-package corfu-doc
-  :hook
-  (corfu-mode . corfu-doc-mode)
-  :bind
-  (:map corfu-map
-        ("M-p" . corfu-doc-scroll-down)
-        ("M-n" . corfu-doc-scroll-up)))
-
 (use-package cape
   :init
   (add-to-list 'completion-at-point-functions #'cape-file))
@@ -612,69 +650,13 @@
 (use-package flycheck
   :commands flycheck-mode)
 
-;; (use-package lsp-mode
-;;   :custom
-;;   (lsp-completion-provider :none)
-;;   (lsp-keymap-prefix "C-c l")
-;;   (lsp-headerline-breadcrumb-enable nil)
-;;   (lsp-modeline-code-action-fallback-icon "?")
-;;   (lsp-modeline-code-actions-segments '(icon count))
-;;   :init
-;;   (defun my-lsp-mode-setup-completion ()
-;;     (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
-;;           '(orderless)))
-
-;;   (defun my-update-completions-list ()
-;;     (progn
-;;       (fset 'non-greedy-lsp
-;;             (cape-capf-properties #'lsp-completion-at-point :exclusive 'no))
-;;       (setq completion-at-point-functions
-;;             '(non-greedy-lsp cape-file))))
-
-;;   (defun my-lsp-python-setup ()
-;;     (add-hook 'lsp-configure-hook
-;;               (lambda ()
-;;                     (when lsp-auto-configure
-;;                       (flycheck-add-next-checker 'lsp 'python-pyright)))))
-
-;;   (use-package lsp-ui :commands lsp-ui-mode)
-
-;;   (setq lsp-enabled-clients '(elixir-ls jedi clojure-lsp gopls clang ts-ls tailwindcss))
-
-;;   :hook ((clojure-mode . lsp-deferred)
-;;          (clojurescript-mode . lsp-deferred)
-;;          (go-mode . lsp-deferred)
-;;          (python-mode . lsp-deferred)
-;;          (python-mode . (lambda ()
-;;                           (advice-add #'my-lsp-python-setup
-;;                                       :after #'lsp-configure-buffer)))
-;;          (lsp-completion-mode . my-lsp-mode-setup-completion)
-;;          (lsp-completion-mode . my-update-completions-list)
-;;          (lsp-mode . yas-minor-mode)
-;;          (lsp-mode . lsp-enable-which-key-integration))
-;;   :commands lsp lsp-deferred)
-
-;; (use-package lsp-jedi)
-
-;; ;; (use-package lsp-pyright
-;; ;;   :defer t
-;; ;;   :custom
-;; ;;   (lsp-pyright-auto-import-completions nil)
-;; ;;   :init
-;; ;;   (defun my-python-setup ()
-
-;; ;;     (require 'lsp-pyright)
-;; ;;     (lsp-deferred))
-;; ;;   :hook
-;; ;;   (python-mode . my-python-setup))
-
-;; (use-package lsp-tailwindcss
-;;   :init
-;;   (setq lsp-tailwindcss-add-on-mode t)
-;;   :config
-;;   (setq lsp-tailwindcss-major-modes '(clojure-mode clojurescript-mode web-mode css-mode)))
-
-(use-package eglot)
+(use-package eglot
+  :config
+  (add-to-list 'eglot-server-programs
+               '(nix-mode . ("nil")))
+  :hook ((clojure-mode . eglot-ensure)
+         (go-mode . eglot-ensure)
+         (nix-mode . eglot-ensure)))
 
 (use-package modus-themes
   :custom
@@ -684,6 +666,7 @@
   (modus-themes-syntax '(green-strings faint))
   (modus-themes-paren-match '(bold))
   (modus-themes-mode-line '(borderless))
+  (modus-themes-fringes nil)
   :init
   (load-theme 'modus-vivendi t))
 
@@ -700,12 +683,84 @@
   (custom-set-faces
    '(dashboard-items-face ((t (:inherit default)))))
   :config
+  (dashboard-setup-startup-hook)
   (setq initial-buffer-choice (lambda () (get-buffer-create "*dashboard*")))
   :custom
   (dashboard-startup-banner 'logo)
   (dashboard-center-content t))
 
 (use-package emms
+  :init
+  (defun my-emms-browser-format-line (bdata &optional target)
+    "Return a propertized string to be inserted in the buffer."
+    (unless target
+      (setq target 'browser))
+    (let* ((name (or (emms-browser-bdata-name bdata) "misc"))
+           (level (emms-browser-bdata-level bdata))
+           (type (emms-browser-bdata-type bdata))
+           (indent (emms-browser-make-indent level))
+           (track (emms-browser-bdata-first-track bdata))
+           (path (concat emms-source-file-default-directory "/"
+                         (emms-track-get track 'name)))
+           (face (emms-browser-get-face bdata))
+           (format (emms-browser-get-format bdata target))
+           (props (list 'emms-browser-bdata bdata))
+           (format-choices
+            `(("i" . ,indent)
+              ("n" . ,name)
+              ("y" . ,(emms-track-get-year track))
+              ("A" . ,(emms-track-get track 'info-album))
+              ("a" . ,(emms-track-get track 'info-artist))
+              ("C" . ,(emms-track-get track 'info-composer))
+              ("p" . ,(emms-track-get track 'info-performer))
+              ("t" . ,(emms-track-get track 'info-title))
+              ("D" . ,(emms-browser-disc-number track))
+              ("T" . ,(emms-browser-track-number track))
+              ("d" . ,(emms-browser-track-duration track))))
+           str)
+      (when (equal type 'info-album)
+        (setq format-choices (append format-choices
+                                     `(("cS" . ,(emms-browser-get-cover-str path 'small))
+                                       ("cM" . ,(emms-browser-get-cover-str path 'medium))
+                                       ("cL" . ,(emms-browser-get-cover-str path 'large))))))
+
+      (when (functionp format)
+        (setq format (funcall format bdata format-choices)))
+
+      (setq str
+            (with-temp-buffer
+              (insert format)
+              (goto-char (point-min))
+              (let ((start (point-min)))
+                ;; jump over any image
+                (when (re-search-forward "%c[SML]" nil t)
+                  (setq start (point)))
+                ;; jump over the indent
+                (when (re-search-forward "%i" nil t)
+                  (setq start (point)))
+                (add-text-properties start (point-max)
+                                     (list 'face face)))
+              (buffer-string)))
+
+      (setq str (emms-browser-format-spec str format-choices))
+
+      ;; give tracks a 'boost' if they're not top-level
+      ;; (covers take up an extra space)
+      (when (and (eq type 'info-title)
+                 (not (string= indent "")))
+        (setq str (concat " " str)))
+
+      ;; if we're in playlist mode, add a track
+      (when (and (eq target 'playlist)
+                 (eq type 'info-title))
+        (setq props
+              (append props `(emms-track ,track))))
+
+      ;; add properties to the whole string
+      (add-text-properties 0 (length str) props str)
+      str))
+
+  (advice-add 'emms-browser-format-line :override #'my-emms-browser-format-line)
   :config
   (require 'emms-setup)
   (require 'emms-player-mpd)
