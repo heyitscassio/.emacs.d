@@ -316,7 +316,7 @@ Only enable the electrip pair mode in the programming mode
     (if-let ((filename (buffer-file-name))
              (curl (executable-find "curl")))
         (make-process
-         :name "cu"
+         :name "curl"
          :command `("curl" "-F" ,(concat "file=@" filename) "https://0x0.st")
          :filter (lambda (x y) (kill-new y)))))
 
@@ -706,12 +706,12 @@ Use direnv when changind directories in emacs
 *** Acutex
 
 #+begin_src emacs-lisp
-  (use-package tex-mode
-    :straight `(auctex
-                :type nil
-                :local-repo "~/.nix-profile/share/emacs/site-lisp/auctex")
-    ;; :straight 'auctex
-    :mode "\\.tex\\'")
+  ;; (use-package tex-mode
+  ;;   :straight `(auctex
+  ;;               :type nil
+  ;;               :local-repo "~/.nix-profile/share/emacs/site-lisp/auctex")
+  ;;   ;; :straight 'auctex
+  ;;   :mode "\\.tex\\'")
 #+end_src
 
 *** Eshell
@@ -798,7 +798,29 @@ Use direnv when changind directories in emacs
     (add-to-list 'project-find-functions #'my-project-try-clj))
 #+end_src
 
+*** TRAMP
+
+#+begin_src emacs-lisp
+  (use-package tramp
+    :custom
+    (tramp-auto-save-directory
+     (expand-file-name (concat user-emacs-directory "autosave")))
+    :init
+    ;; (connection-local-set-profile-variables
+    ;;  'remote-without-auth-sources '((auth-sources . nil)))
+
+    ;; (connection-local-set-profiles
+    ;;  '(:application tramp) 'remote-without-auth-sources)
+    )
+#+end_src
+
 ** Language modes
+*** Sed
+
+#+begin_src emacs-lisp
+  (use-package sed-mode)
+#+end_src
+
 *** Yaml
 
 #+begin_src emacs-lisp
@@ -1052,12 +1074,8 @@ Use direnv when changind directories in emacs
 
 #+begin_src emacs-lisp
   (use-package eglot
-    :config
-    (add-to-list 'eglot-server-programs
-                 '(nix-mode . ("nil")))
     :hook ((clojure-mode . eglot-ensure)
-           (go-mode . eglot-ensure)
-           (nix-mode . eglot-ensure)))
+           (go-mode . eglot-ensure)))
 #+end_src
 
 ** UI

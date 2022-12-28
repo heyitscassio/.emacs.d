@@ -148,7 +148,7 @@
   (if-let ((filename (buffer-file-name))
            (curl (executable-find "curl")))
       (make-process
-       :name "cu"
+       :name "curl"
        :command `("curl" "-F" ,(concat "file=@" filename) "https://0x0.st")
        :filter (lambda (x y) (kill-new y)))))
 
@@ -419,12 +419,12 @@
   (eldoc-echo-area-use-multiline-p 2)
   (eldoc-echo-area-display-truncation-message nil))
 
-(use-package tex-mode
-  :straight `(auctex
-              :type nil
-              :local-repo "~/.nix-profile/share/emacs/site-lisp/auctex")
-  ;; :straight 'auctex
-  :mode "\\.tex\\'")
+;; (use-package tex-mode
+;;   :straight `(auctex
+;;               :type nil
+;;               :local-repo "~/.nix-profile/share/emacs/site-lisp/auctex")
+;;   ;; :straight 'auctex
+;;   :mode "\\.tex\\'")
 
 (use-package eshell
   :hook
@@ -481,6 +481,20 @@
 
   :config
   (add-to-list 'project-find-functions #'my-project-try-clj))
+
+(use-package tramp
+  :custom
+  (tramp-auto-save-directory
+   (expand-file-name (concat user-emacs-directory "autosave")))
+  :init
+  ;; (connection-local-set-profile-variables
+  ;;  'remote-without-auth-sources '((auth-sources . nil)))
+
+  ;; (connection-local-set-profiles
+  ;;  '(:application tramp) 'remote-without-auth-sources)
+  )
+
+(use-package sed-mode)
 
 (use-package yaml-mode)
 
@@ -651,12 +665,8 @@
   :commands flycheck-mode)
 
 (use-package eglot
-  :config
-  (add-to-list 'eglot-server-programs
-               '(nix-mode . ("nil")))
   :hook ((clojure-mode . eglot-ensure)
-         (go-mode . eglot-ensure)
-         (nix-mode . eglot-ensure)))
+         (go-mode . eglot-ensure)))
 
 (use-package modus-themes
   :custom
