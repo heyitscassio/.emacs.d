@@ -1,90 +1,370 @@
 ;; -*- lexical-binding: t; -*-
-;;; 
-;;; Cassio's Emacs Configuration
-;;;
 
-;; Copyright (C) Cássio Ávila
-;; Author: Cássio Ávila <cassioavila@protonmail.com>
-;; URL: https://github.com/toniz4/.emacs.d
-;; This file is not part of GNU Emacs.
-;; This file is free software.
+;; The default is 800 kilobytes.  Measured in bytes.
+(setq gc-cons-threshold (* 50 1000 1000))
 
-;; The following code was auto-tangled from init.org. ;;
+;; Profile emacs startup
+(add-hook 'emacs-startup-hook
+          (lambda ()
+            (message "*** Emacs loaded in %s seconds with %d garbage collections."
+                     (emacs-init-time "%.2f")
+                     gcs-done)))
 
-(setq use-short-answers t)
-(setq ring-bell-function 'ignore)
+;; Silence compiler warnings as they can be pretty disruptive
+(setq native-comp-async-report-warnings-errors nil)
 
-;; scroll
-(setq scroll-conservatively 1000)
-(setq scroll-margin 2)
+;; Set the right directory to store the native comp cache
+(add-to-list 'native-comp-eln-load-path (expand-file-name "eln-cache/" user-emacs-directory))
 
-;; Revert window changes
-(winner-mode)
+(unless (featurep 'straight)
+  ;; Bootstrap straight.el
+  (defvar bootstrap-version)
+  (let ((bootstrap-file
+         (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
+        (bootstrap-version 5))
+    (unless (file-exists-p bootstrap-file)
+      (with-current-buffer
+          (url-retrieve-synchronously
+           "https://raw.githubusercontent.com/raxod502/straight.el/develop/install.el"
+           'silent 'inhibit-cookies)
+        (goto-char (point-max))
+        (eval-print-last-sexp)))
+    (load bootstrap-file nil 'nomessage)))
 
-; Cache directory
-(setq user-emacs-directory "~/.cache/emacs/")
+;; Use straight.el for use-package expressions
+(straight-use-package 'use-package)
 
-(when (not (file-directory-p user-emacs-directory))
-  (make-directory user-emacs-directory t))
+(straight-use-package '(setup :type git :host nil :repo "https://git.sr.ht/~pkal/setup"))
+(require 'setup)
 
-; Backup directory
-(setq backup-directory-alist `((".*" . ,(expand-file-name "backups" user-emacs-directory)))
-      backup-by-copying t
-      version-control t
-      delete-old-versions t
-      vc-make-backup-files t
-      kept-old-versions 10
-      kept-new-versions 10)
+(setup-define :disabled
+  (lambda ()
+    `,(setup-quit))
+  :documentation "Always stop evaluating the body.")
 
-(setq native-comp-eln-load-path
-      (list (expand-file-name "eln-cache" user-emacs-directory)))
+(setup-define :load-after
+    (lambda (features &rest body)
+      (let ((body `(progn
+                     (require ',(setup-get 'feature))
+                     ,@body)))
+        (dolist (feature (if (listp features)
+                             (nreverse features)
+                           (list features)))
+          (setq body `(with-eval-after-load ',feature ,body)))
+        body))
+  :documentation "Load the current feature after FEATURES."
+  :indent 1)
+
+;; Recipe is always a list
+;; Install via Guix if length == 1 or :guix t is present
+
+(defun my/filter-straight-recipe (recipe)
+    (let* ((plist (cdr recipe))
+	(name (plist-get plist :straight)))
+    (cons (if (and name (not (equal name t)))
+		name
+	    (car recipe))
+	    (plist-put plist :straight nil))))
+
+(setup-define :pkg
+    (lambda (&rest recipe)
+    `(straight-use-package ',(my/filter-straight-recipe recipe)))
+    :documentation "Install RECIPE via straight.el"
+    :shorthand #'cadr)
+
+(setq inhibit-startup-message t)
 
 (scroll-bar-mode -1)
-(menu-bar-mode -1)
 (tool-bar-mode -1)
 (tooltip-mode -1)
-
+(set-fringe-mode 10)
+(menu-bar-mode -1)
 (blink-cursor-mode 0)
 
-(setq inhibit-startup-screen t
-      inhibit-startup-echo-area-message t
-      server-client-instructions nil)
+(setq mouse-wheel-scroll-amount '(1 ((shift) . 1)))
+(setq mouse-wheel-progressive-speed nil)
+(setq mouse-wheel-follow-mouse 't)
+(setq scroll-step 1) 
+(setq use-dialog-box nil)
 
-;; (load-theme 'mplex t)
+(setup (:pkg diminish))
 
-; Line number mode
-(setq display-line-numbers-type 'relative
-      display-line-numbers-width-start t)
+(column-number-mode)
 
-(global-display-line-numbers-mode)
+(setq display-line-numbers-type 'relative)
 
-;; Don't resize the frames in steps; it looks weird, especially in tiling window
-;; managers, where it can leave unseemly gaps.
-(setq frame-resize-pixelwise t)
+;; Enable line numbers for some modes
+(dolist (mode '(text-mode-hook
+                prog-mode-hook
+                conf-mode-hook))
+  (add-hook mode (lambda () (display-line-numbers-mode 1))))
 
-;; But don't resize pixelwise
-(setq window-resize-pixelwise nil)
+;; Override some modes which derive from the above
+(dolist (mode '(org-mode-hook))
+  (add-hook mode (lambda () (display-line-numbers-mode 0))))
 
-(setq-default show-trailing-whitespace t)
+(setq large-file-warning-threshold nil)
+(setq vc-follow-symlinks t)
+(setq ad-redefinition-action 'accept)
+(defalias 'yes-or-no-p 'y-or-n-p)
 
-(setq window-divider-default-right-width 3
-        window-divider-default-left-width 3)
+(defvar ignored-buffers '("\\*Messages\\*"
+                          "\\*straight-process\\*"
+                          "\\*Help\\*"
+                          "\\*Backtrace\\*"))
 
-  (window-divider-mode)
+(defun my/ignore-buffers (buffers)
+  (setq ignored-buffers (append ignored-buffers buffers)))
 
-(defun my-set-font-faces ()
+(defun my/set-font-faces ()
   (if window-system
-      (let* ((main-font "Go Mono Nerd Font")
+      (let* ((main-font "Go Mono Nerd Font:pixelsize=20")
              (fallback "monospace")
              (font (if (x-list-fonts main-font) main-font fallback)))
-        (set-face-attribute 'default nil :font font :height 90)
-        (set-face-attribute 'fixed-pitch nil :font font :height 90))))
+        (set-face-attribute 'default nil :font font)
+        (set-face-attribute 'fixed-pitch nil :font font))))
 
 (if (daemonp)
     (add-hook 'after-make-frame-functions
               (lambda (frame)
-                (with-selected-frame frame (my-set-font-faces))))
-  (my-set-font-faces))
+                (with-selected-frame frame (my/set-font-faces))))
+  (my/set-font-faces))
+
+(setup (:pkg modus-themes)
+    (require-theme 'modus-themes)
+    (setq modus-themes-org-blocks 'gray-background
+	modus-themes-italic-constructs t)
+    (load-theme 'modus-vivendi :no-confirm))
+
+;; Change the user-emacs-directory to keep unwanted things out of ~/.emacs.d
+(setq user-emacs-directory (expand-file-name "~/.cache/emacs/")
+      url-history-file (expand-file-name "url/history" user-emacs-directory))
+
+;; Use no-littering to automatically set common paths to the new user-emacs-directory
+;;(setup (:package no-littering)
+;;  (require 'no-littering))
+
+;; Keep customization settings in a temporary file (thanks Ambrevar!)
+(setq custom-file
+      (if (boundp 'server-socket-dir)
+          (expand-file-name "custom.el" server-socket-dir)
+        (expand-file-name (format "emacs-custom-%s.el" (user-uid)) temporary-file-directory)))
+(load custom-file t)
+
+(global-set-key (kbd "<escape>") 'keyboard-escape-quit)
+
+(setup (:pkg undo-tree)
+  (setq undo-tree-auto-save-history nil)
+  (global-undo-tree-mode 1))
+
+(setup (:pkg evil)
+  ;; Pre-load configuration
+  (setq evil-want-integration t)
+  (setq evil-want-keybinding nil)
+  (setq evil-want-C-u-scroll t)
+  (setq evil-want-C-i-jump nil)
+  (setq evil-respect-visual-line-mode t)
+  (setq evil-undo-system 'undo-tree)
+
+  (evil-mode 1)
+
+  (dolist (mode '(custom-mode
+		  eshell-mode
+		  git-rebase-mode
+		  erc-mode
+		  circe-server-mode
+		  circe-chat-mode
+		  circe-query-mode
+		  sauron-mode
+		  term-mode))
+    (add-to-list 'evil-emacs-state-modes mode))
+
+  (define-key evil-insert-state-map (kbd "C-g") 'evil-normal-state)
+  (define-key evil-insert-state-map (kbd "C-h") 'evil-delete-backward-char-and-join)
+
+  ;; Use visual line motions even outside of visual-line-mode buffers
+  (evil-global-set-key 'motion "j" 'evil-next-visual-line)
+  (evil-global-set-key 'motion "k" 'evil-previous-visual-line)
+
+  (evil-set-initial-state 'messages-buffer-mode 'normal)
+  (evil-set-initial-state 'dashboard-mode 'normal))
+
+(setup (:pkg evil-collection)
+  ;; Is this a bug in evil-collection?
+  (setq evil-collection-company-use-tng nil)
+  (:load-after evil
+    (:option evil-collection-outline-bind-tab-p nil
+	     (remove evil-collection-mode-list) 'lispy
+	     (remove evil-collection-mode-list) 'org-present)
+    (evil-collection-init)))
+
+(setup (:pkg which-key)
+  (diminish 'which-key-mode)
+  (which-key-mode)
+  (setq which-key-idle-delay 0.3))
+
+(setup (:pkg general)
+  (general-evil-setup t)
+
+  (general-create-definer my/leader-key-def
+    :states 'normal
+    :keymaps 'override
+    :prefix "SPC"
+    :global-prefix "C-SPC")
+
+  (general-create-definer my/local-leader-key-def
+    :states 'normal
+    :prefix "SPC m"
+    :global-prefix "C-SPC m")
+
+  ;;(general-create-definer my/ctrl-c-keys
+    ;;:prefix "C-c")
+
+  (my/leader-key-def
+    "b" '(nil :which-key "Buffers")
+    "br" '(revert-buffer :which-key "revert buffer")
+    "f" '(nil :which-key "Files")
+    "ff" '(find-file :which-key "Ripgrep")
+
+    "h" '(nil :which-key "Help")
+    "hc" '(describe-char :which-key "Describe Char")
+    "hC" '(describe-command :which-key "Describe Command")
+    "he" '(view-echo-area-messages :which-key "Show Echo Area Messages")
+    "hf" '(describe-function :which-key "Describe Function")
+    "hF" '(describe-face :which-key "Describe Face")
+    "hv" '(describe-variable :which-key "Describe Variable")
+
+    "o" '(nil :which-key "Apps")
+    "qK" '(save-buffers-kill-emacs :which-key "Apps")))
+
+;; TODO: Mode this to another section
+;; (setq-default fill-column 80)
+
+;; Turn on indentation and auto-fill mode for Org files
+(defun my/org-mode-setup ()
+  (org-indent-mode)
+  (auto-fill-mode 0)
+  (visual-line-mode 1)
+  (setq evil-auto-indent nil)
+  (diminish org-indent-mode))
+
+(setup (:pkg org)
+  (:also-load org-tempo)
+  (:hook my/org-mode-setup)
+  (setq org-ellipsis " ▾"
+        org-hide-emphasis-markers t
+        org-src-fontify-natively t
+        org-fontify-quote-and-verse-blocks t
+        org-src-tab-acts-natively t
+        org-edit-src-content-indentation 2
+        org-hide-block-startup nil
+        org-src-preserve-indentation nil
+        org-startup-folded 'content
+        org-cycle-separator-lines 2
+        org-capture-bookmark nil)
+
+  ;; (setq org-modules
+  ;;   '(org-crypt
+  ;;     org-habit
+  ;;     org-bookmark
+  ;;     org-eshell
+  ;;     org-irc))
+
+  (setq org-refile-targets '((nil :maxlevel . 1)
+                             (org-agenda-files :maxlevel . 1)))
+
+  (setq org-outline-path-complete-in-steps nil)
+  (setq org-refile-use-outline-path t)
+
+  (evil-define-key '(normal insert visual) org-mode-map (kbd "C-j") 'org-next-visible-heading)
+  (evil-define-key '(normal insert visual) org-mode-map (kbd "C-k") 'org-previous-visible-heading)
+
+  (evil-define-key '(normal insert visual) org-mode-map (kbd "M-j") 'org-metadown)
+  (evil-define-key '(normal insert visual) org-mode-map (kbd "M-k") 'org-metaup)
+
+  (org-babel-do-load-languages
+    'org-babel-load-languages
+    '((emacs-lisp . t)))
+
+  (push '("conf-unix" . conf-unix) org-src-lang-modes))
+
+;; This is needed as of Org 9.2
+(setup org-tempo
+  (:when-loaded
+    (add-to-list 'org-structure-template-alist '("sh" . "src sh"))
+    (add-to-list 'org-structure-template-alist '("el" . "src emacs-lisp"))
+    (add-to-list 'org-structure-template-alist '("li" . "src lisp"))
+    (add-to-list 'org-structure-template-alist '("sc" . "src scheme"))
+    (add-to-list 'org-structure-template-alist '("ts" . "src typescript"))
+    (add-to-list 'org-structure-template-alist '("py" . "src python"))
+    (add-to-list 'org-structure-template-alist '("go" . "src go"))
+    (add-to-list 'org-structure-template-alist '("yaml" . "src yaml"))
+    (add-to-list 'org-structure-template-alist '("json" . "src json"))))
+
+(defun my/org-babel-tangle-config ()
+  (when (string-equal (buffer-file-name)
+                      (expand-file-name "~/.emacs.d/init.org"))
+    (let ((org-config-babel-evaluate nil))
+      (org-babel-tangle))))
+
+  (add-hook 'org-mode-hook
+            (lambda ()
+              (add-hook 'after-save-hook #'my/org-babel-tangle-config)))
+
+(setq display-time-format "%l:%M %p %b %y"
+      display-time-default-load-average nil)
+
+(setup (:pkg minions)
+  (:hook-into doom-modeline-mode))
+
+(setup (:pkg doom-modeline)
+  (:hook-into after-init-hook)
+  (:option doom-modeline-height 20
+           doom-modeline-bar-width 6
+           doom-modeline-lsp t
+           doom-modeline-github nil
+           doom-modeline-mu4e nil
+           ;; doom-modeline-irc t
+           doom-modeline-minor-modes t
+           doom-modeline-persp-name nil
+           doom-modeline-buffer-file-name-style 'truncate-except-project
+           doom-modeline-major-mode-icon nil))
+
+(setup (:pkg perspective)
+  (:option persp-initial-frame-name "Main"
+           persp-suppress-no-prefix-key-warning t)
+  (my/leader-key-def
+    "TAB" '(nil :which-key "Workspaces")
+    "TAB l" '(persp-switch :which-key "Persp Switch")
+    "TAB n" '(persp-next :which-key "Persp Next")
+    "TAB p" '(persp-prev :which-key "Persp Previous"))
+  (unless (equal persp-mode t)
+    (persp-mode))
+  (:load-after consult
+    (consult-customize consult--source-buffer :hidden t :default nil)
+    (add-to-list 'consult-buffer-sources persp-consult-source)))
+
+(setq global-auto-revert-non-file-buffers t)
+
+(setup (:require paren)
+  (show-paren-mode 1))
+
+(setq tramp-default-method "ssh")
+
+(setq-default indent-tabs-mode nil)
+
+(setup (:pkg evil-commentary)
+  (evil-commentary-mode))
+
+(setq-default show-trailing-whitespace t)
+
+(setup (:pkg lispyville)
+  (:hook-into lisp-mode-hook
+              emacs-lisp-mode-hook
+              clojure-mode-hook
+              scheme-mode-hook)
+  (lispyville-set-key-theme '(slurp/barf-lispy operators c-w additional commentary))
+  (lispy-mode))
 
 (add-hook 'prog-mode-hook
           (lambda ()
@@ -94,613 +374,110 @@
           (lambda ()
             (electric-pair-local-mode t)))
 
-(add-hook 'org-present-mode-hook
-          (lambda ()
-            (visual-fill-column-mode 1)
-            (setq mode-line-format nil)))
+(setup (:pkg origami)
+  (:hook-into yaml-mode))
 
-(add-hook 'org-present-mode-quit-hook
-          (lambda ()
-            (visual-fill-column-mode 0)
-            (doom-modeline-mode)))
+(setup (:pkg envrc)
+  (my/ignore-buffers '("\\*envrc\\*"))
+  (envrc-global-mode))
 
-(add-hook 'go-mode-hook
-          (lambda ()
-            (setq-local tab-width 4)))
+(setup savehist
+  (setq history-length 25)
+  (savehist-mode 1))
 
-(add-hook 'sh-mode-hook
-          (lambda ()
-            (setq-local tab-width 4)))
+(defun my/minibuffer-backward-kill (arg)
+  "When minibuffer is completing a file name delete up to parent
+folder, otherwise delete a word"
+  (interactive "p")
+  (if minibuffer-completing-file-name
+      (if (string-match-p "/." (minibuffer-contents))
+          (zap-up-to-char (- arg) ?/)
+        (delete-minibuffer-contents))
+      (kill-word (- arg))))
 
-(add-hook 'doc-view-mode-hook
-          (lambda ()
-            (display-line-numbers-mode 0)))
-
-(setq c-default-style "linux")
-(defun my-c-mode-hook ()
-  (setq indent-tabs-mode t)
-  (setq tab-width 8))
-(add-hook 'c-mode-hook 'my-c-mode-hook)
-
-(defconst my-lisp-mode-hooks
-  '(lisp-mode-hook
-    emacs-lisp-mode-hook
-    clojure-mode-hook
-    scheme-mode-hook))
-
-(add-hook 'kill-emacs-hook (lambda ()
-                             (org-babel-tangle "~/.emacs.d/init.org")))
-
-(add-hook 'prog-mode-hook (lambda ()
-                            (prettify-symbols-mode)))
-
-;; Switch to the scratch buffer
-(defun my-switch-to-scratch-buffer ()
-  (interactive)
-  (switch-to-buffer "*scratch*"))
-
-(defun my-switch-to-dashboard-buffer ()
-  (interactive)
-  (switch-to-buffer "*dashboard*"))
-
-(defun upload-buffer-file-to-0x0 ()
-  (interactive)
-  (if-let ((filename (buffer-file-name))
-           (curl (executable-find "curl")))
-      (make-process
-       :name "curl"
-       :command `("curl" "-F" ,(concat "file=@" filename) "https://0x0.st")
-       :filter (lambda (x y) (kill-new y)))))
-
-(defun my-open-eshell ()
-  (interactive)
-  (dlet ((eshell-buffer-name "*eshell session*"))
-    (cond ((equal (get-buffer eshell-buffer-name) (window-buffer (selected-window))) 
-           (select-window (get-mru-window t t t))) ;; Focused on eshell buffer
-          ((get-buffer-window eshell-buffer-name)
-           (switch-to-buffer-other-window eshell-buffer-name)) ;; Visible in frame
-          (t
-           (let ((buf (eshell))) ;; Buffer does not exist
-             (display-buffer buf '(display-buffer-below-selected . ((window-height . 10))))
-             (switch-to-buffer (other-buffer buf))
-             (switch-to-buffer-other-window buf))))))
-
-(defun my-open-dired()
-  (interactive)
-  (dired default-directory))
-
-(defun my-tangle-config ()
-  (interactive)
-  (org-babel-tangle "~/.emacs.d/init.org"))
-
-(setq bookmark-save-flag 1
-      bookmark-set-fringe-mark nil)
-
-(defun my-bookmark-make-record ()
-  `((filename . ,(buffer-file-name))))
-
-(setq bookmark-make-record-function #'my-bookmark-make-record)
-
-(save-place-mode)
-
-(add-to-list 'exec-path
-             (concat (getenv "HOME") "/.local/bin"))
-
-;; (setq eshell-prompt-regexp "^[^#$\n]*[#$] "
-;;       eshell-prompt-function
-;;       (lambda nil
-;;         (concat
-;;          "[" (user-login-name) "@" (system-name) " "
-;;          (if (string= (eshell/pwd) (getenv "HOME"))
-;;              "~" (eshell/basename (eshell/pwd)))
-;;          "]"
-;;          (if (= (user-uid) 0) "# " "$ "))))
-
-(setq eshell-banner-message "")
-
-(defvar bootstrap-version)
-(let ((bootstrap-file
-       (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
-      (bootstrap-version 6))
-  (unless (file-exists-p bootstrap-file)
-    (with-current-buffer
-        (url-retrieve-synchronously
-         "https://raw.githubusercontent.com/radian-software/straight.el/develop/install.el"
-         'silent 'inhibit-cookies)
-      (goto-char (point-max))
-      (eval-print-last-sexp)))
-  (load bootstrap-file nil 'nomessage))
-
-(straight-use-package 'use-package)
-(setq straight-use-package-by-default t)
-
-(use-package general
-  :init
-  (general-create-definer my-local-leader-def
-    :states '(normal motion visual)
-    :prefix ",")
-
-  (general-define-key
-   :states '(normal motion visual)
-   :keymaps 'override
-   :prefix "SPC"
-
-   "SPC" '(execute-extended-command :which-key "M-x")
-   "q" '(save-buffers-kill-emacs :which-key "quit emacs")
-
-   ;; Applications
-   "a" '(nil :which-key "applications")
-   "aa" '(org-agenda-list :which-key "agenda")
-   "ag" '(magit-status :which-key "magit")
-   "ad" '(my-open-dired :which-key "dired")
-   "aD" '(my-switch-to-dashboard-buffer :which-key "dashboard")
-   "as" '(my-open-eshell :which-key "eshell")
-   "am" '(emms-smart-browse :which-key "EMMS")
-
-   ;; Buffes
-   "b" '(nil :which-key "buffer")
-   "ba" '(bookmark-set :which-key "set bookmark")
-   "bb" '(consult-buffer :which-key "switch buffers")
-   "bd" '(evil-delete-buffer :which-key "delete buffer")
-   "bk" '(kill-buffer :which-key "kill other buffers")
-   "bs" '(my-switch-to-scratch-buffer :which-key "scratch buffer")
-   "bi" '(clone-indirect-buffer  :which-key "indirect buffer")
-   "br" '(revert-buffer :which-key "revert buffer")
-
-   ;; Files
-   "f" '(nil :which-key "files")
-   "fb" '(consult-bookmark :which-key "bookmarks")
-   "ff" '(find-file :which-key "find file")
-   "fp" '(project-switch-project :which-key "Switch project")
-   "fr" '(consult-recent-file :which-key "recent files")
-   "fR" '(rename-file :which-key "rename file")
-   "fs" '(save-buffer :which-key "save buffer")
-   "fS" '(evil-write-all :which-key "save all buffers")
-   "fg" '(consult-ripgrep :which-key "ripgrep")
-   "fG" '(consult-grep :which-key "grep")
-
-   ;; Window
-   "w" '(nil :which-key "window")
-   "ww" '(evil-window-next :which-key "next")
-   "wv" '(evil-window-vsplit :which-key "vsplit")
-   "wn" '(evil-window-split :which-key "split")
-   "wq" '(evil-quit :which-key "close window")
-   "w1" '(delete-other-windows :which-key "close other windows")
-
-   ;; Help
-   "h" '(nil :which-key "help")
-   "hc" '(describe-char :which-key "describe char")
-   "hC" '(describe-command :which-key "describe command")
-   "hf" '(describe-function :which-key "describe function")
-   "hF" '(describe-face :which-key "describe face")
-   "hv" '(describe-variable :which-key "describe variable")))
-
-(use-package lispyville
-  :ghook my-lisp-mode-hooks
-  :config
-  (lispyville-set-key-theme '(slurp/barf-lispy wrap operators c-w additional commentary)))
-
-(use-package evil
-  :demand t
-  :bind (("<escape>" . keyboard-escape-quit))
-  :init
-  (setq evil-operator-state-tag "OPR"
-        evil-normal-state-tag "NOR"
-        evil-insert-state-tag "INS"
-        evil-visual-state-tag "VIS"
-        evil-replace-state-tag "REP"
-        evil-emacs-state-tag "EMC"
-        evil-motion-state-tag "MOT")
-
-  (use-package undo-fu)
-
-  (setq evil-echo-state nil
-        evil-undo-system 'undo-fu
-        evil-want-C-u-scroll t
-        evil-want-Y-yank-to-eol t
-        evil-search-module 'evil-search)
-
-  (defun my-elisp-lookup ()
-    (interactive)
-    (let ((sym (symbol-at-point)))
-      (if sym
-          (describe-symbol (symbol-at-point))
-        (message "Invalid symbol"))))
-
-  :custom
-  (evil-want-keybinding nil)
-  :hook
-  (emacs-lisp-mode . (lambda ()
-                  (setq evil-lookup-func #'my-elisp-lookup)))
-  :config
-  (evil-mode 1))
-
-(use-package evil-collection
-  :demand t
-  :after evil
-  :config
-  (evil-collection-init))
-
-(use-package evil-org
-  :after org
-  :hook (org-mode . evil-org-mode)
-  :config
-  (require 'evil-org-agenda)
-  (evil-org-agenda-set-keys))
-
-(use-package evil-commentary
-  :init (evil-commentary-mode))
-
-(use-package evil-goggles
-  :after evil
-  :init
-  (evil-goggles-mode))
-
-(use-package evil-snipe
-  :custom
-  (evil-snipe-smart-case t)
-  (evil-snipe-tab-increment t)
-  (evil-snipe-scope 'visible)
-  :init
-  (evil-snipe-mode))
-
-(use-package editorconfig
-  :config
-  (editorconfig-mode))
-
-(use-package pyvenv
-  :hook
-  (python-mode . pyvenv-mode))
-
-(use-package mu4e
-  :straight (:pre-build ())
-  :commands mu4e)
-
-(use-package marginalia
-  :bind
-  (:map minibuffer-local-map
-        ("M-A" . marginalia-cycle))
-  :init
-  (marginalia-mode))
-
-(use-package vertico
-  :custom
-  (vertico-scroll-margin 2)
-  :init
+(setup (:pkg vertico)
+  (vertico-mode)
   (setq minibuffer-prompt-properties
         '(read-only t cursor-intangible t face minibuffer-prompt))
   (add-hook 'minibuffer-setup-hook #'cursor-intangible-mode)
-  (vertico-mode))
+  (:with-map vertico-map
+    (:bind "C-j" vertico-next
+           "C-k" vertico-previous
+           "C-f" vertico-exit))
+  (:with-map minibuffer-local-map
+    (:bind "C-<backspace>" my/minibuffer-backward-kill))
+  (:option vertico-cycle t))
 
-(use-package savehist
-  :init
-  (savehist-mode))
-
-(use-package consult)
-
-(use-package consult-lsp
-  :commands (consult-lsp-symbols consult-lsp-diagnostics consult-lsp-file-symbols))
-
-(use-package consult-flycheck
-  :commands (consult-flycheck))
-
-(use-package which-key
-  :config
-  (which-key-mode))
-
-(use-package pulsar
-  :init
-  (pulsar-global-mode)
-  :config
-  (setq pulsar-pulse-functions (append pulsar-pulse-functions
-                                       '(evil-scroll-down
-                                         evil-scroll-up
-                                         evil-window-down
-                                         evil-window-up
-                                         evil-window-left
-                                         evil-window-right
-                                         evil-window-next))))
-
-(use-package direnv
-  :config
-  (direnv-mode))
-
-(use-package magit
-  :init
-  (defun transient-bind-esc-to-quit ()
-    (define-key transient-base-map   (kbd "<escape>") #'transient-quit-one)
-    (define-key transient-sticky-map (kbd "<escape>") #'transient-quit-seq)
-    (setq transient-substitute-key-function
-          #'transient-rebind-quit-commands))
-  :commands (magit-status))
-
-(use-package eldoc
-  :custom
-  (eldoc-echo-area-use-multiline-p 2)
-  (eldoc-echo-area-display-truncation-message nil))
-
-;; (use-package tex-mode
-;;   :straight `(auctex
-;;               :type nil
-;;               :local-repo "~/.nix-profile/share/emacs/site-lisp/auctex")
-;;   ;; :straight 'auctex
-;;   :mode "\\.tex\\'")
-
-(use-package eshell
-  :hook
-  (eshell-mode . (lambda () (display-line-numbers-mode -1))))
-
-(use-package ispell
-  :init
-  (setq ispell-program-name (executable-find "aspell")))
-
-(use-package restclient
-  :commands restclient-mode)
-
-(use-package sideline
-  :init
-  (setq sideline-backends-right '(sideline-flymake))
-  (global-sideline-mode))
-
-(use-package sideline-flymake
-  :custom
-  (sideline-flymake-display-mode 'line))
-
-(use-package eros
-  :init
-  (eros-mode))
-
-(use-package project
-  :init
-  (setq project-clj-ignore-files '("target" ".clj-kondo"))
-
-  (defun my-project-try-clj (dir)
-    (let ((lein (locate-dominating-file dir "project.clj"))
-          (clj (locate-dominating-file dir "deps.edn")))
-      (cond (lein (cons 'lein lein))
-            (clj (cons 'clj clj))
-            (t nil))))
-
-  (cl-defmethod project-root ((project (head clj)))
-    (cdr project))
-
-  (cl-defmethod project-root ((project (head lein)))
-    (cdr project))
-
-  (cl-defmethod project-ignores ((project (head clj)) dir)
-    (mapcar
-     (lambda (dir)
-       (concat dir "/"))
-     project-clj-ignore-files))
-
-  (cl-defmethod project-ignores ((project (head lein)) dir)
-    (mapcar
-     (lambda (dir)
-       (concat dir "/"))
-     project-clj-ignore-files))
-
-  :config
-  (add-to-list 'project-find-functions #'my-project-try-clj))
-
-(use-package tramp
-  :custom
-  (tramp-auto-save-directory
-   (expand-file-name (concat user-emacs-directory "autosave")))
-  :init
-  ;; (connection-local-set-profile-variables
-  ;;  'remote-without-auth-sources '((auth-sources . nil)))
-
-  ;; (connection-local-set-profiles
-  ;;  '(:application tramp) 'remote-without-auth-sources)
-  )
-
-(use-package sed-mode)
-
-(use-package yaml-mode)
-
-(use-package fish-mode)
-
-(use-package lua-mode)
-
-(use-package go-mode)
-
-(use-package elixir-mode)
-
-(use-package nix-mode
-  :mode "\\.nix\\'")
-
-(use-package cider
-  :custom
-  (cider-show-error-buffer nil)
-  (cider-eval-result-duration 'change)
-  (cider-clojure-cli-global-options "-Adev")
-  :general
-  (my-local-leader-def
-    :keymaps 'clojure-mode-map
-    "e" '(nil :which-key "eval")
-    "E" '(my-evil-cider-eval-region :which-key "Eval outermost sexp")
-    "eb" '(cider-eval-buffer :which-key "Eval buffer")
-    "ee" '(cider-eval-last-sexp :which-key "Eval last sexp")
-    "er" '(cider-eval-list-at-point :which-key "Eval outermost sexp"))
-  :init
-  (defun my-evil-cider-eval-region ()
-    (interactive)
-    (let ((range (evil-operator-range)))
-      (cider-interactive-eval nil
-                              nil
-                              range
-                              (cider--nrepl-pr-request-map))))
-  (add-to-list 'completion-category-defaults '(cider (styles basic))))
-
-(use-package python-mode
-  :defer t
-  :custom
-  (python-shell-interpreter (executable-find "python")))
-
-(use-package scad-mode)
-
-;; (use-package typescript-mode)
-
-;; (use-package ng2-mode)
-
-(use-package org
-  :init
-  (org-babel-do-load-languages
-   'org-babel-load-languages
-   '((python . t)))
-
-  (defun my-org-mode-setup ()
-    (display-line-numbers-mode 0)
-
-    (org-indent-mode)
-    (auto-fill-mode 0)
-    (visual-line-mode 1)
-
-    ;; Org tempo
-    (require 'org-tempo)
-    (require 'org-agenda)
-
-    (add-to-list 'org-structure-template-alist '("sh" . "src shell"))
-    (add-to-list 'org-structure-template-alist '("el" . "src emacs-lisp"))
-    (add-to-list 'org-structure-template-alist '("py" . "src python")))
-  :hook
-  (org-mode . my-org-mode-setup)
-  :config
-  (setq org-ellipsis " ▼"
-        org-hide-emphasis-markers t))
-
-(use-package org-present
-  :commands (org-present))
-
-(setq org-agenda-files '("~/doc/agenda"))
-
-(use-package org-wild-notifier
-  :custom
-  (org-wild-notifier-alert-time '(10 5))
-  (alert-default-style 'libnotify)
-  (org-wild-notifier-keyword-whitelist '())
-  :config
-  (org-wild-notifier-mode))
-
-(use-package orderless
-  :config
-  (defmacro dispatch: (regexp style)
-    (cl-flet ((symcat (a b) (intern (concat a (symbol-name b)))))
-      `(defun ,(symcat "dispatch:" style) (pattern _index _total)
-         (when (string-match ,regexp pattern)
-           (cons ',(symcat "orderless-" style) (match-string 1 pattern))))))
-
-  (cl-flet ((pre/post (str) (format "^%s\\(.*\\)$\\|^\\(?1:.*\\)%s$" str str)))
-    (dispatch: (pre/post "=") literal)
-    (dispatch: (pre/post "`") regexp)
-    (dispatch: (pre/post (if (or minibuffer-completing-file-name
-                                 (derived-mode-p 'eshell-mode))
-                             "%" "[%.]"))
-               initialism))
-
-  (dispatch: "^{\\(.*\\)}$" flex)
-  (dispatch: "^\\([^][^\\+*]*[./-][^][\\+*$]*\\)$" prefixes)
-  (dispatch: "^!\\(.+\\)$" without-literal)
-  :custom
-  (completion-styles '(orderless))
-  (completion-category-overrides '((file (styles basic partial-completion))))
-  (orderless-matching-styles 'orderless-regexp)
-  (orderless-style-dispatchers
-   '(dispatch:literal dispatch:regexp dispatch:without-literal
-     dispatch:initialism dispatch:flex dispatch:prefixes))
-  (orderless-component-separator #'orderless-escapable-split-on-space))
-
-(use-package corfu
-  :custom
-  (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
-  (corfu-auto t)                 ;; Enable auto completion
-  (corfu-auto-delay 0.1)
-  (corfu-auto-prefix 2)
-  (corfu-separator ?\s)             ;; Orderless field separator
-  (corfu-quit-at-boundary 'separator)      ;; Never quit at completion boundary
-  (corfu-quit-no-match nil)           ;; Never quit, even if there is no match
-  (corfu-preselect-first nil)       ;; Disable candidate preselection
-  :init
+(setup (:pkg corfu)
+  (:with-map corfu-map
+    (:bind "C-s" corfu-quit
+           [tab] corfu-next
+           [backtab] corfu-previous))
+  (:hook-into prog-mode-hook)
+  (:option corfu-cycle t
+           corfu-auto t
+           corfu-auto-delay 0.1
+           corfu-auto-prefix 2
+           corfu-quit-no-match nil
+           corfu-preselect 'prompt)
   (defun corfu-enable-in-minibuffer ()
     "Enable Corfu in the minibuffer if `completion-at-point' is bound."
     (when (where-is-internal #'completion-at-point (list (current-local-map)))
       (corfu-mode 1)))
+  (add-hook 'minibuffer-setup-hook #'corfu-enable-in-minibuffer))
 
-  (mapc #'evil-declare-ignore-repeat
-        '(corfu-next
-          corfu-previous
-          corfu-first
-          corfu-last))
+(setup (:pkg orderless)
+  (require 'orderless)
+  (setq completion-styles '(orderless)
+        completion-category-defaults nil
+        completion-category-overrides '((file (styles . (partial-completion))))))
 
-  (mapc #'evil-declare-change-repeat
-        '(corfu-insert
-          corfu-complete))
-  :bind
-  (:map corfu-map
-        ("C-s" . corfu-quit)
-        ("TAB" . corfu-next)
-        ([tab] . corfu-next)
-        ("S-TAB" . corfu-previous)
-        ([backtab] . corfu-previous))
-  :hook ((prog-mode . corfu-mode)
-         (shell-mode . corfu-mode)
-         (cider-repl-mode . corfu-mode)
-         (minibuffer-setup . corfu-enable-in-minibuffer)
-         (eshell-mode . corfu-mode)))
+(setup (:pkg consult)
+  (:require consult)
+  ;; (require 'consult)
+  (my/leader-key-def
+    "SPC" '(my/switch-buffer :which-key "Buffers")
+    "/" '(consult-ripgrep :which-key "Ripgrep")
+    "bb" '(my/project-buffer :which-key "Project Buffers"))
 
-(use-package cape
-  :init
-  (add-to-list 'completion-at-point-functions #'cape-file))
+  (:with-map minibuffer-local-map
+    (:bind "C-r" consult-history))
 
-(use-package yasnippet-snippets
-  :defer t)
+  (defun my/get-project-root ()
+    (when (fboundp 'projectile-project-root)
+      (projectile-project-root)))
 
-(use-package yasnippet
-  :commands
-  (yas-minor-mode)
-  :hook
-  (prog-mode . yas-minor-mode))
+  (defun my/switch-buffer ()
+    (interactive)
+    (let ((consult-buffer-filter (append consult-buffer-filter ignored-buffers)))
+      (consult-buffer)))
 
-(use-package flycheck
-  :commands flycheck-mode)
+  (defun my/project-buffer ()
+    (interactive)
+    (let ((consult-buffer-filter (append consult-buffer-filter ignored-buffers)))
+      (consult-project-buffer)))
 
-(use-package eglot
-  :hook ((clojure-mode . eglot-ensure)
-         (go-mode . eglot-ensure)))
+  (:option consult-project-root-function #'my/get-project-root
+           completion-in-region-function #'consult-completion-in-region))
 
-(use-package modus-themes
-  :custom
-  (modus-themes-org-blocks 'gray-background)
-  (modus-themes-italic-constructs t)
-  (modus-themes-subtle-line-numbers t)
-  (modus-themes-syntax '(green-strings faint))
-  (modus-themes-paren-match '(bold))
-  (modus-themes-mode-line '(borderless))
-  (modus-themes-fringes nil)
-  :init
-  (load-theme 'modus-vivendi t))
+(setup (:pkg cider)
+  (:option cider-clojure-cli-global-options "-Adev"
+           cider-auto-mode nil)
+  (my/local-leader-key-def
+    :keymaps 'clojure-mode-map
+    "e" '(nil :which-key "Eval")
+    "eb" '(cider-eval-buffer :which-key "Eval buffer")
+    "ed" '(cider-eval-defun-at-point :which-key "Eval debug")
+    "'" '(cider-connect-clj :which-key "Connect clj")
+    ;; "\"" '(cider-connect-cljs :which-key "Connect cljs")
 
-(use-package doom-modeline
-  :init
-  (setq doom-modeline-height 0)
-  :hook (after-init . doom-modeline-mode))
+    "j" '(cider-jack-in-clj :which-key "Jack-in clj")
+    "J" '(cider-jack-in-cljs :which-key "Jack-in cljs"))
+  (add-to-list 'completion-category-defaults '(cider (styles basic)))
+  (add-hook 'clojure-mode-hook #'cider-mode)
+  (my/ignore-buffers '("\\*cider-repl.*")))
 
-(use-package rainbow-mode
-  :commands rainbow-mode)
-
-(use-package dashboard
-  :init
-  (custom-set-faces
-   '(dashboard-items-face ((t (:inherit default)))))
-  :config
-  (dashboard-setup-startup-hook)
-  (setq initial-buffer-choice (lambda () (get-buffer-create "*dashboard*")))
-  :custom
-  (dashboard-startup-banner 'logo)
-  (dashboard-center-content t))
-
-(use-package emms
-  :init
+(setup (:pkg emms)
   (defun my-emms-browser-format-line (bdata &optional target)
     "Return a propertized string to be inserted in the buffer."
     (unless target
@@ -769,15 +546,14 @@
       ;; add properties to the whole string
       (add-text-properties 0 (length str) props str)
       str))
-
-  (advice-add 'emms-browser-format-line :override #'my-emms-browser-format-line)
-  :config
   (require 'emms-setup)
-  (require 'emms-player-mpd)
-  (emms-all)
-  (setq emms-source-file-default-directory "/mnt/extern/music/")
-  (setq emms-player-list '(emms-player-mpd))
-  (setq emms-info-functions '(emms-info-mpd))
+  (emms-standard)
+  (emms-default-players)
   (setq emms-browser-covers #'emms-browser-cache-thumbnail-async)
-  (setq emms-browser-thumbnail-small-size 64)
-  (setq emms-browser-thumbnail-medium-size 128))
+  (emms-mode-line-disable)
+  (setq emms-source-file-default-directory "/mnt/extern/music/")
+  (advice-add 'emms-browser-format-line :override #'my-emms-browser-format-line)
+  (my/leader-key-def
+    :keymap 'override
+    "o"  '(:ignore t :which-key "Open")
+    "om" '(emms-smart-browse :which-key "play / pause")))
