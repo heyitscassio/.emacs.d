@@ -73,13 +73,18 @@
     :shorthand #'cadr)
 
 (setq inhibit-startup-message t)
-
 (scroll-bar-mode -1)
 (tool-bar-mode -1)
 (tooltip-mode -1)
 (set-fringe-mode 10)
 (menu-bar-mode -1)
 (blink-cursor-mode 0)
+
+(setup (:pkg all-the-icons)
+  (:option all-the-icons-scale-factor 2))
+
+(setup (:pkg diff-hl)
+  (global-diff-hl-mode))
 
 (setq mouse-wheel-scroll-amount '(1 ((shift) . 1)))
 (setq mouse-wheel-progressive-speed nil)
@@ -319,7 +324,7 @@
 
 (setup (:pkg doom-modeline)
   (:hook-into after-init-hook)
-  (:option doom-modeline-height 20
+  (:option doom-modeline-height 30
            doom-modeline-bar-width 6
            doom-modeline-lsp t
            doom-modeline-github nil
@@ -329,6 +334,9 @@
            doom-modeline-persp-name nil
            doom-modeline-buffer-file-name-style 'truncate-except-project
            doom-modeline-major-mode-icon nil))
+
+(setup (:pkg nyan-mode)
+  (nyan-mode))
 
 (setup (:pkg perspective)
   (:option persp-initial-frame-name "Main"
@@ -469,8 +477,7 @@ folder, otherwise delete a word"
     "eb" '(cider-eval-buffer :which-key "Eval buffer")
     "ed" '(cider-eval-defun-at-point :which-key "Eval debug")
     "'" '(cider-connect-clj :which-key "Connect clj")
-    ;; "\"" '(cider-connect-cljs :which-key "Connect cljs")
-
+    "\"" '(cider-connect-cljs :which-key "Connect cljs")
     "j" '(cider-jack-in-clj :which-key "Jack-in clj")
     "J" '(cider-jack-in-cljs :which-key "Jack-in cljs"))
   (add-to-list 'completion-category-defaults '(cider (styles basic)))
@@ -557,3 +564,43 @@ folder, otherwise delete a word"
     :keymap 'override
     "o"  '(:ignore t :which-key "Open")
     "om" '(emms-smart-browse :which-key "play / pause")))
+
+(setup (:pkg magit)
+  (:option magit-display-buffer-function #'my/magit-buffer-function)
+  (my/ignore-buffers '("^magit: .*"))
+
+  (defun my/magit-buffer-function (buffer)
+    (let ((buffer-mode (buffer-local-value 'major-mode buffer)))
+      (display-buffer
+       buffer (cond
+               ((and (eq buffer-mode 'magit-status-mode)
+                     (get-buffer-window buffer))
+                '(display-buffer-reuse-window))
+               ;; Any magit buffers opened from a commit window should open below
+               ;; it. Also open magit process windows below.
+               ((or (bound-and-true-p git-commit-mode)
+                    (eq buffer-mode 'magit-process-mode))
+                (let ((size (if (eq buffer-mode 'magit-process-mode)
+                                0.35
+                              0.7)))
+                  `(display-buffer-below-selected
+                    . ((window-height . ,(truncate (* (window-height) size)))))))
+
+               ;; Everything else should reuse the current window.
+               ((or (not (derived-mode-p 'magit-mode))
+                    (not (memq (with-current-buffer buffer major-mode)
+                               '(magit-process-mode
+                                 magit-revision-mode
+                                 magit-diff-mode
+                                 magit-stash-mode
+                                 magit-status-mode))))
+                '(display-buffer-same-window))
+               nil))))
+  (my/leader-key-def
+    "g" '(:ignore t :which-key "Git")
+    "gg" '(magit :which-key "Magit")))
+
+(setup (:pkg eglot)
+  (my/ignore-buffers '("^\\*EGLOT .*"))
+  (:with-mode (clojure-mode go-mode)
+    (:hook #'eglot-ensure)))
