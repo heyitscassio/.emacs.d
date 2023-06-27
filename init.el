@@ -55,6 +55,31 @@
   :documentation "Load the current feature after FEATURES."
   :indent 1)
 
+(setup-define :file-match
+  (lambda (regexp)
+    `(add-to-list 'auto-mode-alist (cons ,regexp ',(setup-get 'mode))))
+  :documentation "Associate the current mode with files that match REGEXP."
+  :debug '(form)
+  :repeatable t)
+
+(setup-define :leader
+  (lambda (&rest first)
+    `(with-eval-after-load 'general
+       (my/leader-key-def ,@first)))
+  :documentation "Associate the current mode with files that match REGEXP."
+  :debug '(form)
+  ;; :repeatable
+  :indent 1)
+
+(setup (:pkg nix-mode)
+  (:leader
+      "ab" '(nil :which-key "toba")
+      "cb" '(nil :which-key "toba")))
+
+(my/leader-key-def
+  "ab" '(nil :which-key "toba")
+  "cb" '(nil :which-key "toba"))
+
 ;; Recipe is always a list
 ;; Install via Guix if length == 1 or :guix t is present
 
@@ -80,8 +105,10 @@
 (menu-bar-mode -1)
 (blink-cursor-mode 0)
 
-(setup (:pkg all-the-icons)
-  (:option all-the-icons-scale-factor 2))
+;; (setup (:pkg all-the-icons)
+;;   ;; (:option all-the-icons-scale-factor 2
+;;   ;;          all-the-icons-wicon-scale-factor 2)
+;;   )
 
 (setup (:pkg diff-hl)
   (global-diff-hl-mode))
@@ -121,9 +148,26 @@
 (defun my/ignore-buffers (buffers)
   (setq ignored-buffers (append ignored-buffers buffers)))
 
+(setup (:pkg pulsar)
+  (:when-loaded
+    (:option pulsar-pulse-functions (append pulsar-pulse-functions
+                                            '(evil-goto-line
+                                              evil-goto-first-line
+                                              evil-scroll-down
+                                              evil-scroll-up
+                                              evil-window-down
+                                              evil-window-up
+                                              evil-window-left
+                                              evil-window-right
+                                              evil-window-next))))
+  (:load-after consult
+    (add-hook 'consult-after-jump-hook #'pulsar-recenter-top)
+    (add-hook 'consult-after-jump-hook #'pulsar-reveal-entry))
+  (pulsar-global-mode))
+
 (defun my/set-font-faces ()
   (if window-system
-      (let* ((main-font "Go Mono Nerd Font:pixelsize=20")
+      (let* ((main-font "Iosevka Nerd Font Mono:pixelsize=21")
              (fallback "monospace")
              (font (if (x-list-fonts main-font) main-font fallback)))
         (set-face-attribute 'default nil :font font)
@@ -202,6 +246,64 @@
 	     (remove evil-collection-mode-list) 'lispy
 	     (remove evil-collection-mode-list) 'org-present)
     (evil-collection-init)))
+
+(setup (:pkg evil-goggles)
+  (:when-loaded
+    (:option evil-goggles-pulse nil
+             evil-goggles-enable-delete nil
+             evil-goggles-enable-change nil
+             evil-goggles--commands
+             (append evil-goggles--commands
+                     '((evil-magit-yank-whole-line
+                        :face evil-goggles-yank-face
+                        :switch evil-goggles-enable-yank
+                        :advice evil-goggles--generic-async-advice)
+                       (+evil:yank-unindented
+                        :face evil-goggles-yank-face
+                        :switch evil-goggles-enable-yank
+                        :advice evil-goggles--generic-async-advice)
+                       (+eval:region
+                        :face evil-goggles-yank-face
+                        :switch evil-goggles-enable-yank
+                        :advice evil-goggles--generic-async-advice)
+                       (lispyville-delete
+                        :face evil-goggles-delete-face
+                        :switch evil-goggles-enable-delete
+                        :advice evil-goggles--generic-blocking-advice)
+                       (lispyville-delete-line
+                        :face evil-goggles-delete-face
+                        :switch evil-goggles-enable-delete
+                        :advice evil-goggles--delete-line-advice)
+                       (lispyville-yank
+                        :face evil-goggles-yank-face
+                        :switch evil-goggles-enable-yank
+                        :advice evil-goggles--generic-async-advice)
+                       (lispyville-yank-line
+                        :face evil-goggles-yank-face
+                        :switch evil-goggles-enable-yank
+                        :advice evil-goggles--generic-async-advice)
+                       (lispyville-change
+                        :face evil-goggles-change-face
+                        :switch evil-goggles-enable-change
+                        :advice evil-goggles--generic-blocking-advice)
+                       (lispyville-change-line
+                        :face evil-goggles-change-face
+                        :switch evil-goggles-enable-change
+                        :advice evil-goggles--generic-blocking-advice)
+                       (lispyville-change-whole-line
+                        :face evil-goggles-change-face
+                        :switch evil-goggles-enable-change
+                        :advice evil-goggles--generic-blocking-advice)
+                       (lispyville-indent
+                        :face evil-goggles-indent-face
+                        :switch evil-goggles-enable-indent
+                        :advice evil-goggles--generic-async-advice)
+                       (lispyville-join
+                        :face evil-goggles-join-face
+                        :switch evil-goggles-enable-join
+                        :advice evil-goggles--join-advice)))))
+  (evil-goggles-mode)
+  (evil-goggles-use-diff-faces))
 
 (setup (:pkg which-key)
   (diminish 'which-key-mode)
@@ -319,21 +421,32 @@
 (setq display-time-format "%l:%M %p %b %y"
       display-time-default-load-average nil)
 
+(setup (:pkg nerd-icons))
+
 (setup (:pkg minions)
   (:hook-into doom-modeline-mode))
 
 (setup (:pkg doom-modeline)
   (:hook-into after-init-hook)
-  (:option doom-modeline-height 30
+  (:option doom-modeline-height 33
            doom-modeline-bar-width 6
            doom-modeline-lsp t
            doom-modeline-github nil
            doom-modeline-mu4e nil
            ;; doom-modeline-irc t
+           doom-modeline-buffer-state-icon nil
            doom-modeline-minor-modes t
+           doom-modeline-modal-icon nil
            doom-modeline-persp-name nil
            doom-modeline-buffer-file-name-style 'truncate-except-project
-           doom-modeline-major-mode-icon nil))
+           doom-modeline-major-mode-icon nil)
+  (:load-after evil
+    (setq evil-normal-state-tag ""
+          evil-emacs-state-tag ""
+          evil-insert-state-tag ""
+          evil-motion-state-tag ""
+          evil-visual-state-tag ""
+          evil-operator-state-tag "")))
 
 (setup (:pkg nyan-mode)
   (nyan-mode))
@@ -434,6 +547,13 @@ folder, otherwise delete a word"
       (corfu-mode 1)))
   (add-hook 'minibuffer-setup-hook #'corfu-enable-in-minibuffer))
 
+(setup (:pkg kind-icon)
+  (:option kind-icon-default-face 'corfu-default)
+  (:load-after corfu
+    (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
+  (:when-loaded
+    (plist-put kind-icon-default-style :height 0.833)))
+
 (setup (:pkg orderless)
   (require 'orderless)
   (setq completion-styles '(orderless)
@@ -483,6 +603,12 @@ folder, otherwise delete a word"
   (add-to-list 'completion-category-defaults '(cider (styles basic)))
   (add-hook 'clojure-mode-hook #'cider-mode)
   (my/ignore-buffers '("\\*cider-repl.*")))
+
+;; (setup (:pkg nix-mode)
+;;   (:file-match "*.nix"))
+
+
+(setup (:pkg nix-mode))
 
 (setup (:pkg emms)
   (defun my-emms-browser-format-line (bdata &optional target)
