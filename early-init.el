@@ -20,7 +20,7 @@
 (setq idle-update-delay 1.0)
 
 ;; Disabling bidi (bidirectional editing stuff)
-(setq-default bidi-display-reordering 'left-to-right 
+(setq-default bidi-display-reordering 'left-to-right
               bidi-paragraph-direction 'left-to-right)
 (setq bidi-inhibit-bpa t)  ; emacs 27 only - disables bidirectional parenthesis
 

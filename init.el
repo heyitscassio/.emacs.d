@@ -16,6 +16,11 @@
 ;; Set the right directory to store the native comp cache
 (add-to-list 'native-comp-eln-load-path (expand-file-name "eln-cache/" user-emacs-directory))
 
+(defvar ignored-buffers '("\\*Messages\\*"
+                          "\\*straight-process\\*"
+                          "\\*Help\\*"
+                          "\\*Backtrace\\*"))
+
 (unless (featurep 'straight)
   ;; Bootstrap straight.el
   (defvar bootstrap-version)
@@ -63,25 +68,29 @@
   :repeatable t)
 
 (setup-define :leader
-  (lambda (&rest first)
+  (lambda (&rest args)
     `(with-eval-after-load 'general
-       (my/leader-key-def ,@first)))
-  :documentation "Associate the current mode with files that match REGEXP."
+       (general-define-key ,@args
+                           :states 'normal
+                           :keymaps 'override
+                           :prefix "SPC"
+                           :global-prefix "C-SPC")))
+  :documentation "Define a leader keybind"
   :debug '(form)
-  ;; :repeatable
-  :indent 1)
+  :indent 0)
 
-(setup (:pkg nix-mode)
-  (:leader
-      "ab" '(nil :which-key "toba")
-      "cb" '(nil :which-key "toba")))
-
-(my/leader-key-def
-  "ab" '(nil :which-key "toba")
-  "cb" '(nil :which-key "toba"))
-
-;; Recipe is always a list
-;; Install via Guix if length == 1 or :guix t is present
+(setup-define :local-leader
+  (lambda (&rest args)
+    `(with-eval-after-load 'general
+       (let ((map ',(setup-get 'map)))
+         (general-define-key ,@args
+                             :states 'normal
+                             :keymaps map
+                             :prefix "SPC m"
+                             :global-prefix "C-SPC m"))))
+  :documentation "Define a local leader keybind"
+  :debug '(form)
+  :indent 0)
 
 (defun my/filter-straight-recipe (recipe)
     (let* ((plist (cdr recipe))
@@ -96,6 +105,11 @@
     `(straight-use-package ',(my/filter-straight-recipe recipe)))
     :documentation "Install RECIPE via straight.el"
     :shorthand #'cadr)
+
+(setup-define :ignore-buffers
+  (lambda (&rest buffers)
+    `(setq ignored-buffers (append ignored-buffers ',buffers)))
+  :documentation "Ignore buffers")
 
 (setq inhibit-startup-message t)
 (scroll-bar-mode -1)
@@ -139,14 +153,6 @@
 (setq vc-follow-symlinks t)
 (setq ad-redefinition-action 'accept)
 (defalias 'yes-or-no-p 'y-or-n-p)
-
-(defvar ignored-buffers '("\\*Messages\\*"
-                          "\\*straight-process\\*"
-                          "\\*Help\\*"
-                          "\\*Backtrace\\*"))
-
-(defun my/ignore-buffers (buffers)
-  (setq ignored-buffers (append ignored-buffers buffers)))
 
 (setup (:pkg pulsar)
   (:when-loaded
@@ -311,23 +317,8 @@
   (setq which-key-idle-delay 0.3))
 
 (setup (:pkg general)
-  (general-evil-setup t)
-
-  (general-create-definer my/leader-key-def
-    :states 'normal
-    :keymaps 'override
-    :prefix "SPC"
-    :global-prefix "C-SPC")
-
-  (general-create-definer my/local-leader-key-def
-    :states 'normal
-    :prefix "SPC m"
-    :global-prefix "C-SPC m")
-
-  ;;(general-create-definer my/ctrl-c-keys
-    ;;:prefix "C-c")
-
-  (my/leader-key-def
+  (:require general)
+  (:leader
     "b" '(nil :which-key "Buffers")
     "br" '(revert-buffer :which-key "revert buffer")
     "f" '(nil :which-key "Files")
@@ -437,7 +428,7 @@
            doom-modeline-buffer-state-icon nil
            doom-modeline-minor-modes t
            doom-modeline-modal-icon nil
-           doom-modeline-persp-name nil
+           doom-modeline-persp-name t
            doom-modeline-buffer-file-name-style 'truncate-except-project
            doom-modeline-major-mode-icon nil)
   (:load-after evil
@@ -451,19 +442,21 @@
 (setup (:pkg nyan-mode)
   (nyan-mode))
 
-(setup (:pkg perspective)
-  (:option persp-initial-frame-name "Main"
-           persp-suppress-no-prefix-key-warning t)
-  (my/leader-key-def
-    "TAB" '(nil :which-key "Workspaces")
-    "TAB l" '(persp-switch :which-key "Persp Switch")
-    "TAB n" '(persp-next :which-key "Persp Next")
-    "TAB p" '(persp-prev :which-key "Persp Previous"))
-  (unless (equal persp-mode t)
-    (persp-mode))
-  (:load-after consult
-    (consult-customize consult--source-buffer :hidden t :default nil)
-    (add-to-list 'consult-buffer-sources persp-consult-source)))
+(defvar +my/main-workspace "main")
+
+(setup (:pkg persp-mode)
+  (:hook-into emacs-startup-hook)
+  (:option persp-autokill-buffer-on-remove 'kill-weak
+           persp-reset-windows-on-nil-window-conf nil
+           persp-nil-hidden t
+           persp-auto-save-fname "autosave"
+           persp-save-dir (concat user-emacs-directory "workspaces/")
+           persp-set-last-persp-for-new-frames t
+           persp-switch-to-added-buffer nil
+           persp-kill-foreign-buffer-behaviour 'kill
+           persp-remove-buffers-from-nil-persp-behaviour nil
+           persp-auto-resume-time -1 ; Don't auto-load on startup
+           persp-auto-save-opt (if noninteractive 0 1)))
 
 (setq global-auto-revert-non-file-buffers t)
 
@@ -499,7 +492,7 @@
   (:hook-into yaml-mode))
 
 (setup (:pkg envrc)
-  (my/ignore-buffers '("\\*envrc\\*"))
+  (:ignore-buffers "\\*envrc\\*")
   (envrc-global-mode))
 
 (setup savehist
@@ -562,11 +555,11 @@ folder, otherwise delete a word"
 
 (setup (:pkg consult)
   (:require consult)
-  ;; (require 'consult)
-  (my/leader-key-def
+  (:leader
     "SPC" '(my/switch-buffer :which-key "Buffers")
     "/" '(consult-ripgrep :which-key "Ripgrep")
-    "bb" '(my/project-buffer :which-key "Project Buffers"))
+    "bb" '(my/project-buffer :which-key "Project Buffers")
+    "bB" '(consult-buffer :which-key "All Buffers"))
 
   (:with-map minibuffer-local-map
     (:bind "C-r" consult-history))
@@ -591,18 +584,18 @@ folder, otherwise delete a word"
 (setup (:pkg cider)
   (:option cider-clojure-cli-global-options "-Adev"
            cider-auto-mode nil)
-  (my/local-leader-key-def
-    :keymaps 'clojure-mode-map
-    "e" '(nil :which-key "Eval")
-    "eb" '(cider-eval-buffer :which-key "Eval buffer")
-    "ed" '(cider-eval-defun-at-point :which-key "Eval debug")
-    "'" '(cider-connect-clj :which-key "Connect clj")
-    "\"" '(cider-connect-cljs :which-key "Connect cljs")
-    "j" '(cider-jack-in-clj :which-key "Jack-in clj")
-    "J" '(cider-jack-in-cljs :which-key "Jack-in cljs"))
+  (:ignore-buffers "\\*cider-repl.*" "\\*nrepl-server .*")
+  (:with-map clojure-mode-map
+    (:local-leader
+      "e" '(nil :which-key "Eval")
+      "eb" '(cider-eval-buffer :which-key "Eval buffer")
+      "ed" '(cider-eval-defun-at-point :which-key "Eval debug")
+      "'" '(cider-connect-clj :which-key "Connect clj")
+      "\"" '(cider-connect-cljs :which-key "Connect cljs")
+      "j" '(cider-jack-in-clj :which-key "Jack-in clj")
+      "J" '(cider-jack-in-cljs :which-key "Jack-in cljs")))
   (add-to-list 'completion-category-defaults '(cider (styles basic)))
-  (add-hook 'clojure-mode-hook #'cider-mode)
-  (my/ignore-buffers '("\\*cider-repl.*")))
+  (add-hook 'clojure-mode-hook #'cider-mode))
 
 ;; (setup (:pkg nix-mode)
 ;;   (:file-match "*.nix"))
@@ -685,16 +678,19 @@ folder, otherwise delete a word"
   (setq emms-browser-covers #'emms-browser-cache-thumbnail-async)
   (emms-mode-line-disable)
   (setq emms-source-file-default-directory "/mnt/extern/music/")
-  (advice-add 'emms-browser-format-line :override #'my-emms-browser-format-line)
-  (my/leader-key-def
-    :keymap 'override
-    "o"  '(:ignore t :which-key "Open")
-    "om" '(emms-smart-browse :which-key "play / pause")))
+  (advice-add 'emms-browser-format-line :override #'my-emms-browser-format-line))
+
+  ;;(my/leader-key-def
+    ;;:keymap 'override
+    ;;"o"  '(:ignore t :which-key "Open")
+    ;;"om" '(emms-smart-browse :which-key "play / pause")))
 
 (setup (:pkg magit)
   (:option magit-display-buffer-function #'my/magit-buffer-function)
-  (my/ignore-buffers '("^magit: .*"))
-
+  (:ignore-buffers "^magit: .*")
+  (:leader
+    "g" '(:ignore t :which-key "Git")
+    "gg" '(magit :which-key "Magit"))
   (defun my/magit-buffer-function (buffer)
     (let ((buffer-mode (buffer-local-value 'major-mode buffer)))
       (display-buffer
@@ -721,12 +717,9 @@ folder, otherwise delete a word"
                                  magit-stash-mode
                                  magit-status-mode))))
                 '(display-buffer-same-window))
-               nil))))
-  (my/leader-key-def
-    "g" '(:ignore t :which-key "Git")
-    "gg" '(magit :which-key "Magit")))
+               nil)))))
 
 (setup (:pkg eglot)
-  (my/ignore-buffers '("^\\*EGLOT .*"))
-  (:with-mode (clojure-mode go-mode)
+  (:ignore-buffers "^\\*EGLOT .*")
+  (:with-mode (clojure-mode clojurescript-mode-hook go-mode)
     (:hook #'eglot-ensure)))
