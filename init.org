@@ -223,7 +223,10 @@ hides minor modes from modeline
   (setq large-file-warning-threshold nil)
   (setq vc-follow-symlinks t)
   (setq ad-redefinition-action 'accept)
+  ;; annoying ass sound
+  (setq ring-bell-function 'ignore)
   (defalias 'yes-or-no-p 'y-or-n-p)
+
 #+end_src
 
 ** Pulsar
@@ -269,11 +272,14 @@ hides minor modes from modeline
 ** Colorscheme
 
 #+begin_src emacs-lisp
-  (setup (:pkg modus-themes)
-      (require-theme 'modus-themes)
-      (setq modus-themes-org-blocks 'gray-background
-	  modus-themes-italic-constructs t)
-      (load-theme 'modus-vivendi :no-confirm))
+  ;; (setup (:pkg modus-themes)
+  ;;     (require-theme 'modus-themes)
+  ;;     (setq modus-themes-org-blocks 'gray-background
+  ;;         modus-themes-italic-constructs t)
+  ;;     (load-theme 'modus-vivendi :no-confirm))
+
+  (setup (:pkg ef-themes)
+    (load-theme 'ef-winter :no-confirm))
 #+end_src
 
 * Paths
@@ -573,7 +579,14 @@ hides minor modes from modeline
             evil-insert-state-tag ""
             evil-motion-state-tag ""
             evil-visual-state-tag ""
-            evil-operator-state-tag "")))
+            evil-operator-state-tag ""))
+    (add-hook 'server-switch-hook #'force-mode-line-update))
+
+  ;; (setup (:pkg moody)
+  ;;   ;; (mood-line-mode)
+  ;;   ;; (:hook-into after-init-hook)
+  ;;   )
+
 #+end_src
 
 ** Nyan Cat
@@ -587,9 +600,17 @@ hides minor modes from modeline
 
 #+begin_src emacs-lisp
   (defvar +my/main-workspace "main")
+  (defvar +workspace--old-uniquify-style nil)
 
+  (setup (:pkg workgroups))
+
+  ;; Taken from doom
   (setup (:pkg persp-mode)
-    (:hook-into emacs-startup-hook)
+    (:leader
+      "TAB" '(:ignore t :which-key "Perspective")
+      "TAB n" '(persp-next :which-key "Next perspective")
+      "TAB l" '(persp-switch :which-key "Switch perspective"))
+    (:hook-into window-setup-hook)
     (:option persp-autokill-buffer-on-remove 'kill-weak
              persp-reset-windows-on-nil-window-conf nil
              persp-nil-hidden t
@@ -599,8 +620,132 @@ hides minor modes from modeline
              persp-switch-to-added-buffer nil
              persp-kill-foreign-buffer-behaviour 'kill
              persp-remove-buffers-from-nil-persp-behaviour nil
-             persp-auto-resume-time -1 ; Don't auto-load on startup
-             persp-auto-save-opt (if noninteractive 0 1)))
+             persp-auto-resume-time -1    ; Don't auto-load on startup
+             persp-auto-save-opt (if noninteractive 0 1))
+
+    (add-hook 'persp-before-deactivate-functions #'deactivate-mark)
+    (add-to-list 'window-persistent-parameters '(winner-ring . t))
+
+    (defun +workspace-current-name ()
+      "Get the name of the current workspace."
+      (safe-persp-name (get-current-persp)))
+
+    (defun +workspace-exists-p (name)
+      "Returns t if NAME is the name of an existing workspace."
+      (member name persp-names-cache))
+
+    (defun +workspace-new (name)
+      "Create a new workspace named NAME. If one already exists, return nil.
+  Otherwise return t on success, nil otherwise."
+      (when (+workspace-exists-p name)
+        (error "A workspace named '%s' already exists" name))
+      (let ((persp (persp-add-new name))
+            (+popup--inhibit-transient t))
+        (save-window-excursion
+          (let ((ignore-window-parameters t)
+                (+popup--inhibit-transient t))
+            (persp-delete-other-windows))
+          (switch-to-buffer "*scratch*")
+          (setf
+           persp-nil-wconf
+           ;; (persp-window-conf persp)
+           (funcall persp-window-state-get-function (selected-frame))))
+        persp))
+
+    (defun +workspace-switch (name &optional auto-create-p)
+      "Switch to another workspace named NAME (a string).
+
+  If AUTO-CREATE-P is non-nil, create the workspace if it doesn't exist, otherwise
+  throws an error."
+      (unless (+workspace-exists-p name)
+        (if auto-create-p
+            (+workspace-new name)
+          (error "%s is not an available workspace" name)))
+      (let ((old-name (+workspace-current-name)))
+        (unless (equal old-name name)
+          ;; (setq +workspace--last
+          ;;       (or (and (not (string= old-name persp-nil-name))
+          ;;                old-name)
+          ;;           +workspaces-main))
+          (persp-frame-switch name))
+        (equal (+workspace-current-name) name)))
+
+    (defun +workspace--generate-id ()
+      (or (cl-loop for name in persp-names-cache
+                   when (string-match-p "^#[0-9]+$" name)
+                   maximize (string-to-number (substring name 1)) into max
+                   finally return (if max (1+ max)))
+          1))
+
+    (defun +workspaces-associate-frame-fn (frame &optional _new-frame-p)
+      "Create a blank, new perspective and associate it with FRAME."
+      (when persp-mode
+        (message "frame persp %s " (persp-frame-list-without-daemon))
+        (message "frame %s " (frame-list))
+        (if (not (persp-frame-list-without-daemon))
+            (+workspace-switch +my/main-workspace t)
+          (with-selected-frame frame
+            (+workspace-switch +my/main-workspace t)
+            (set-frame-parameter frame 'workspace (+workspace-current-name))
+            ;; ensure every buffer has a buffer-predicate
+            (persp-set-frame-buffer-predicate frame)))))
+
+    (setq persp-init-frame-behaviour t
+          persp-init-new-frame-behaviour-override nil
+          persp-interactive-init-frame-behaviour-override #'+workspaces-associate-frame-fn
+          persp-emacsclient-init-frame-behaviour-override #'+workspaces-associate-frame-fn)
+
+    (:with-hook (persp-mode-hook persp-after-load-state-functions)
+      (:hook
+       (lambda ()
+         (when persp-mode
+           (dolist (frame (frame-list))
+             (when (string= (safe-persp-name (get-current-persp frame)) persp-nil-name)
+               ;; Take extra steps to ensure no frame ends up in the nil perspective
+               (persp-frame-switch (or (cadr (hash-table-keys *persp-hash*))
+                                       +my/main-workspace)
+                                   frame)))))))
+    (:hook
+     (lambda (&rest _)
+       (when persp-mode
+         (let (persp-before-switch-functions)
+           ;; Try our best to hide the nil perspective.
+           (when (equal (car persp-names-cache) persp-nil-name)
+             (pop persp-names-cache))
+           ;; ...and create a *real* main workspace to fill this role.
+           (unless (or (persp-get-by-name +my/main-workspace)
+                       ;; Start from 2 b/c persp-mode counts the nil workspace
+                       (> (hash-table-count *persp-hash*) 2))
+             (persp-add-new +my/main-workspace))
+           ;; HACK Fix #319: the warnings buffer gets swallowed when creating
+           ;;      `+workspaces-main', so display it ourselves, if it exists.
+           (when-let (warnings (get-buffer "*Warnings*"))
+             (save-excursion
+               (display-buffer-in-side-window
+                warnings '((window-height . shrink-window-if-larger-than-buffer)))))))))
+    (:hook
+     (lambda ()
+       (cond (persp-mode
+              ;; `uniquify' breaks persp-mode. It renames old buffers, which causes
+              ;; errors when switching between perspective (their buffers are
+              ;; serialized by name and persp-mode expects them to have the same
+              ;; name when restored).
+              (when uniquify-buffer-name-style
+                (setq +workspace--old-uniquify-style uniquify-buffer-name-style))
+              (setq uniquify-buffer-name-style nil)
+              ;; Ensure `persp-kill-buffer-query-function' is last
+              (remove-hook 'kill-buffer-query-functions #'persp-kill-buffer-query-function)
+              (add-hook 'kill-buffer-query-functions #'persp-kill-buffer-query-function t)
+              ;; Restrict buffer list to workspace
+              ;; (advice-add #'doom-buffer-list :override #'+workspace-buffer-list)
+              )
+             (t
+              (when +workspace--old-uniquify-style
+                (setq uniquify-buffer-name-style +workspace--old-uniquify-style))
+              ;; (advice-remove #'doom-buffer-list #'+workspace-buffer-list)
+              )))
+     )
+    )
 #+end_src
 
 * Auto Revert
@@ -763,7 +908,7 @@ hides minor modes from modeline
   (setup (:pkg consult)
     (:require consult)
     (:leader
-      "SPC" '(my/switch-buffer :which-key "Buffers")
+      "SPC" '( my/switch-buffer :which-key "Buffers")
       "/" '(consult-ripgrep :which-key "Ripgrep")
       "bb" '(my/project-buffer :which-key "Project Buffers")
       "bB" '(consult-buffer :which-key "All Buffers"))
@@ -775,18 +920,22 @@ hides minor modes from modeline
       (when (fboundp 'projectile-project-root)
         (projectile-project-root)))
 
-    (defun my/switch-buffer ()
-      (interactive)
-      (let ((consult-buffer-filter (append consult-buffer-filter ignored-buffers)))
-        (consult-buffer)))
+    (:load-after persp-mode
+      (defun my/switch-buffer ()
+        (interactive)
+        (with-persp-buffer-list
+         nil
+         (let ((consult-buffer-filter (append consult-buffer-filter ignored-buffers)))
+           (consult-buffer))))
 
-    (defun my/project-buffer ()
-      (interactive)
-      (let ((consult-buffer-filter (append consult-buffer-filter ignored-buffers)))
-        (consult-project-buffer)))
+      (defun my/project-buffer ()
+        (interactive)
+        (let ((consult-buffer-filter (append consult-buffer-filter ignored-buffers)))
+          (consult-project-buffer))))
 
     (:option consult-project-root-function #'my/get-project-root
              completion-in-region-function #'consult-completion-in-region))
+
 #+end_src
 
 * Languages
@@ -895,13 +1044,16 @@ hides minor modes from modeline
         (add-text-properties 0 (length str) props str)
         str))
     (require 'emms-setup)
-    (emms-standard)
-    (emms-default-players)
+    (require 'emms-player-mpd)
+    (emms-all)
+    (setq emms-player-list '(emms-player-mpd))
+    (setq emms-info-functions '(emms-info-mpd))
     (setq emms-browser-covers #'emms-browser-cache-thumbnail-async)
-    (emms-mode-line-disable)
+    (setq emms-browser-thumbnail-small-size 128)
+    (setq emms-browser-thumbnail-medium-size 192)
+    ;; (emms-mode-line-disable)
     (setq emms-source-file-default-directory "/mnt/extern/music/")
     (advice-add 'emms-browser-format-line :override #'my-emms-browser-format-line))
-
     ;;(my/leader-key-def
       ;;:keymap 'override
       ;;"o"  '(:ignore t :which-key "Open")
