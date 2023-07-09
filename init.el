@@ -21,6 +21,9 @@
                           "\\*Help\\*"
                           "\\*Backtrace\\*"))
 
+(defmacro remove-from-list (list value)
+  `(setq ,list (remove ,value ,list)))
+
 (unless (featurep 'straight)
   ;; Bootstrap straight.el
   (defvar bootstrap-version)
@@ -111,6 +114,11 @@
     `(setq ignored-buffers (append ignored-buffers ',buffers)))
   :documentation "Ignore buffers")
 
+(setup-define :display-rule
+  (lambda (condition &rest actions)
+    `(add-to-list 'display-buffer-alist '(,condition . ,actions)))
+  :documentation "Add to display buffer alist")
+
 (setq inhibit-startup-message t)
 (scroll-bar-mode -1)
 (tool-bar-mode -1)
@@ -118,6 +126,17 @@
 (set-fringe-mode 10)
 (menu-bar-mode -1)
 (blink-cursor-mode 0)
+(set-default 'truncate-lines t)
+
+(setq help-window-select t)
+
+(setq display-buffer-alist
+      '(("\\*[Hh]elp\\*"
+         (display-buffer-in-side-window)
+         (window-height . 0.25)
+         (side . bottom)
+         (slot . 0)
+         (window-parameters . ((mode-line-format . none))))))
 
 ;; (setup (:pkg all-the-icons)
 ;;   ;; (:option all-the-icons-scale-factor 2
@@ -155,6 +174,7 @@
 ;; annoying ass sound
 (setq ring-bell-function 'ignore)
 (defalias 'yes-or-no-p 'y-or-n-p)
+(save-place-mode)
 
 (setup (:pkg pulsar)
   (:when-loaded
@@ -172,6 +192,10 @@
     (add-hook 'consult-after-jump-hook #'pulsar-recenter-top)
     (add-hook 'consult-after-jump-hook #'pulsar-reveal-entry))
   (pulsar-global-mode))
+
+(setup (:pkg rainbow-mode)
+  (:leader
+    "o r" '(rainbow-mode :which-key "Toggle rainbow mode")))
 
 (defun my/set-font-faces ()
   (if window-system
@@ -201,8 +225,8 @@
       url-history-file (expand-file-name "url/history" user-emacs-directory))
 
 ;; Use no-littering to automatically set common paths to the new user-emacs-directory
-;;(setup (:package no-littering)
-;;  (require 'no-littering))
+(setup (:pkg no-littering)
+ (require 'no-littering))
 
 ;; Keep customization settings in a temporary file (thanks Ambrevar!)
 (setq custom-file
@@ -210,6 +234,17 @@
           (expand-file-name "custom.el" server-socket-dir)
         (expand-file-name (format "emacs-custom-%s.el" (user-uid)) temporary-file-directory)))
 (load custom-file t)
+
+; Backup directory
+(setq backup-directory-alist `((".*" . ,(expand-file-name "backups" user-emacs-directory)))
+      backup-by-copying t
+      version-control t
+      delete-old-versions t
+      vc-make-backup-files t
+      kept-old-versions 10
+      kept-new-versions 10)
+
+(setq create-lockfiles nil)
 
 (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
 
@@ -222,47 +257,44 @@
   (setq evil-want-integration t)
   (setq evil-want-keybinding nil)
   (setq evil-want-C-u-scroll t)
-  (setq evil-want-C-i-jump nil)
-  (setq evil-respect-visual-line-mode t)
+  (setq evil-want-C-i-jump t)
+  (setq evil-want-Y-yank-to-eol t)
   (setq evil-undo-system 'undo-tree)
+  (setq evil-echo-state nil)
+  (setq evil-auto-indent t)
 
   (evil-mode 1)
 
   (dolist (mode '(custom-mode
-		  eshell-mode
-		  git-rebase-mode
-		  erc-mode
-		  circe-server-mode
-		  circe-chat-mode
-		  circe-query-mode
-		  sauron-mode
-		  term-mode))
+                  eshell-mode
+                  git-rebase-mode
+                  erc-mode
+                  circe-server-mode
+                  circe-chat-mode
+                  circe-query-mode
+                  sauron-mode
+                  term-mode))
     (add-to-list 'evil-emacs-state-modes mode))
 
   (define-key evil-insert-state-map (kbd "C-g") 'evil-normal-state)
   (define-key evil-insert-state-map (kbd "C-h") 'evil-delete-backward-char-and-join)
 
   ;; Use visual line motions even outside of visual-line-mode buffers
-  (evil-global-set-key 'motion "j" 'evil-next-visual-line)
-  (evil-global-set-key 'motion "k" 'evil-previous-visual-line)
+  ;; (evil-global-set-key 'motion "j" 'evil-next-visual-line)
+  ;; (evil-global-set-key 'motion "k" 'evil-previous-visual-line)
 
   (evil-set-initial-state 'messages-buffer-mode 'normal)
   (evil-set-initial-state 'dashboard-mode 'normal))
 
 (setup (:pkg evil-collection)
-  ;; Is this a bug in evil-collection?
-  (setq evil-collection-company-use-tng nil)
   (:load-after evil
-    (:option evil-collection-outline-bind-tab-p nil
-	     (remove evil-collection-mode-list) 'lispy
-	     (remove evil-collection-mode-list) 'org-present)
     (evil-collection-init)))
 
 (setup (:pkg evil-goggles)
   (:when-loaded
     (:option evil-goggles-pulse nil
-             evil-goggles-enable-delete nil
-             evil-goggles-enable-change nil
+             evil-goggles-enable-delete t
+             evil-goggles-enable-change t
              evil-goggles--commands
              (append evil-goggles--commands
                      '((evil-magit-yank-whole-line
@@ -336,6 +368,7 @@
     "hf" '(describe-function :which-key "Describe Function")
     "hF" '(describe-face :which-key "Describe Face")
     "hv" '(describe-variable :which-key "Describe Variable")
+    "hk" '(describe-key :which-key "Describe Key")
 
     "o" '(nil :which-key "Apps")
     "qK" '(save-buffers-kill-emacs :which-key "Apps")))
@@ -348,7 +381,7 @@
   (org-indent-mode)
   (auto-fill-mode 0)
   (visual-line-mode 1)
-  (setq evil-auto-indent nil)
+  ;; (setq evil-auto-indent nil)
   (diminish org-indent-mode))
 
 (setup (:pkg org)
@@ -414,44 +447,111 @@
             (lambda ()
               (add-hook 'after-save-hook #'my/org-babel-tangle-config)))
 
+(setup (:pkg minions)
+  (:require minions))
+
+(setup (:pkg nyan-mode)
+  (nyan-mode))
+
 (setq display-time-format "%l:%M %p %b %y"
       display-time-default-load-average nil)
 
-(setup (:pkg nerd-icons))
+(defun +my-mode-line/get-current-git-branch ()
+  (when vc-mode
+    (when-let* ((current-file (buffer-file-name)))
+      (list
+       " "
+       (vc-git--symbolic-ref current-file)))))
 
-(setup (:pkg minions)
-  (:hook-into doom-modeline-mode))
+(defun mode-line-fill (reserve)
+  "Return empty space using FACE and leaving RESERVE space on the right."
+  (when
+    (and window-system (eq 'right (get-scroll-bar-mode)))
+    (setq reserve (- reserve 3)))
+  (propertize " "
+    'display
+    `((space :align-to (- (+ right right-fringe right-margin) ,reserve)))))
 
-(setup (:pkg doom-modeline)
-  (:hook-into after-init-hook)
-  (:option doom-modeline-height 33
-           doom-modeline-bar-width 6
-           doom-modeline-lsp t
-           doom-modeline-github nil
-           doom-modeline-mu4e nil
-           ;; doom-modeline-irc t
-           doom-modeline-buffer-state-icon nil
-           doom-modeline-minor-modes t
-           doom-modeline-modal-icon nil
-           doom-modeline-persp-name t
-           doom-modeline-buffer-file-name-style 'truncate-except-project
-           doom-modeline-major-mode-icon nil)
-  (:load-after evil
-    (setq evil-normal-state-tag ""
-          evil-emacs-state-tag ""
-          evil-insert-state-tag ""
-          evil-motion-state-tag ""
-          evil-visual-state-tag ""
-          evil-operator-state-tag ""))
-  (add-hook 'server-switch-hook #'force-mode-line-update))
+(defun +my-mode-line/format (left right)
+  (let ((right-format (format-mode-line right))
+        (left-format (format-mode-line left)))
+    (list
+     left-format
+     (mode-line-fill (length right-format))
+     right-format)))
+
+(defun +my-modeline/show-persp ()
+  (when (featurep 'persp-mode)
+    (let ((persp-names (remove "none" (mapcar #'safe-persp-name (persp-persps))))
+          (current-persp (safe-persp-name (get-current-persp)))
+          (formatted '()))
+      (dolist (name persp-names)
+        (setq formatted (append formatted
+                                (list
+                                 (when (not (string-equal name (car persp-names)))
+                                   " ")
+                                 (if (string-equal name current-persp)
+                                     (propertize name 'face '(:inherit font-lock-comment-face))
+                                   name)))))
+      (add-to-list 'formatted "[" t)
+      (add-to-list 'formatted "]")
+      (reverse formatted))))
+
+(setq-default
+ mode-line-format
+ (list
+  '(:eval
+    (+my-mode-line/format
+     (list
+      "%e "
+      '(:eval (propertize "%b " 'help-echo (buffer-file-name)))
+      "[%*] "
+      '(:eval (list (nyan-create))))
+     (list
+      '(:eval (+my-modeline/show-persp))
+      " "
+      `(:propertize
+        "menu"
+        mouse-face mode-line-highlight
+        local-map ,(make-mode-line-mouse-map 'mouse-1 'minions-minor-modes-menu))
+      '(:eval (when (and (featurep 'flymake) flymake-mode) flymake-mode-line-format))
+      '(:eval (+my-mode-line/get-current-git-branch))
+      " "
+      mode-name
+      " ")))))
+
+;; (setup (:pkg nerd-icons))
+
+;; (setup (:pkg minions)
+;;   (:hook-into doom-modeline-mode))
+
+;; (setup (:pkg doom-modeline)
+;;   (:hook-into after-init-hook)
+;;   (:option doom-modeline-height 33
+;;            doom-modeline-bar-width 6
+;;            doom-modeline-lsp t
+;;            doom-modeline-github nil
+;;            doom-modeline-mu4e nil
+;;            ;; doom-modeline-irc t
+;;            doom-modeline-buffer-state-icon nil
+;;            doom-modeline-minor-modes t
+;;            doom-modeline-modal-icon nil
+;;            doom-modeline-persp-name t
+;;            doom-modeline-buffer-file-name-style 'truncate-except-project
+;;            doom-modeline-major-mode-icon nil)
+;;   (:load-after evil
+;;     (setq evil-normal-state-tag ""
+;;           evil-emacs-state-tag ""
+;;           evil-insert-state-tag ""
+;;           evil-motion-state-tag ""
+;;           evil-visual-state-tag ""
+;;           evil-operator-state-tag ""))
+;;   (add-hook 'server-switch-hook #'force-mode-line-update))
 
 ;; (setup (:pkg moody)
 ;;   ;; (mood-line-mode)
 ;;   ;; (:hook-into after-init-hook)
 ;;   )
-
-(setup (:pkg nyan-mode)
-  (nyan-mode))
 
 (defvar +my/main-workspace "main")
 (defvar +workspace--old-uniquify-style nil)
@@ -462,8 +562,20 @@
 (setup (:pkg persp-mode)
   (:leader
     "TAB" '(:ignore t :which-key "Perspective")
-    "TAB n" '(persp-next :which-key "Next perspective")
-    "TAB l" '(persp-switch :which-key "Switch perspective"))
+    "TAB n" '(persp-switch :which-key "Switch perspective")
+    "TAB l" '(persp-next :which-key "Next perspective")
+    "TAB h" '(persp-prev :which-key "Previous perspective"))
+  (:bind-into global-map
+    "M-1" (lambda () (interactive) (+workspace-switch-by-index 0))
+    "M-2" (lambda () (interactive) (+workspace-switch-by-index 1))
+    "M-3" (lambda () (interactive) (+workspace-switch-by-index 2))
+    "M-4" (lambda () (interactive) (+workspace-switch-by-index 3))
+    "M-5" (lambda () (interactive) (+workspace-switch-by-index 4))
+    "M-6" (lambda () (interactive) (+workspace-switch-by-index 5))
+    "M-7" (lambda () (interactive) (+workspace-switch-by-index 6))
+    "M-8" (lambda () (interactive) (+workspace-switch-by-index 7))
+    "M-9" (lambda () (interactive) (+workspace-switch-by-index 8))
+    "M-0" (lambda () (interactive) (+workspace-switch-by-index nil)))
   (:hook-into window-setup-hook)
   (:option persp-autokill-buffer-on-remove 'kill-weak
            persp-reset-windows-on-nil-window-conf nil
@@ -501,8 +613,8 @@ Otherwise return t on success, nil otherwise."
           (persp-delete-other-windows))
         (switch-to-buffer "*scratch*")
         (setf
-         persp-nil-wconf
-         ;; (persp-window-conf persp)
+         ;; persp-nil-wconf
+         (persp-window-conf persp)
          (funcall persp-window-state-get-function (selected-frame))))
       persp))
 
@@ -524,18 +636,19 @@ throws an error."
         (persp-frame-switch name))
       (equal (+workspace-current-name) name)))
 
-  (defun +workspace--generate-id ()
-    (or (cl-loop for name in persp-names-cache
-                 when (string-match-p "^#[0-9]+$" name)
-                 maximize (string-to-number (substring name 1)) into max
-                 finally return (if max (1+ max)))
-        1))
+  (defun +workspace-switch-by-index (index)
+    "Switch to perspective by index, if the index is larger than the last perspecive or nil, switch to last perspective"
+    (let* ((persps (reverse (butlast (persp-persps))))
+           (selected (if index
+                         (nth index persps)
+                       (car (last persps)))))
+      (if selected
+          (+workspace-switch (safe-persp-name selected))
+        (+workspace-switch (safe-persp-name (car (last persps)))))))
 
   (defun +workspaces-associate-frame-fn (frame &optional _new-frame-p)
     "Create a blank, new perspective and associate it with FRAME."
     (when persp-mode
-      (message "frame persp %s " (persp-frame-list-without-daemon))
-      (message "frame %s " (frame-list))
       (if (not (persp-frame-list-without-daemon))
           (+workspace-switch +my/main-workspace t)
         (with-selected-frame frame
@@ -550,61 +663,57 @@ throws an error."
         persp-emacsclient-init-frame-behaviour-override #'+workspaces-associate-frame-fn)
 
   (:with-hook (persp-mode-hook persp-after-load-state-functions)
-    (:hook
-     (lambda ()
-       (when persp-mode
-         (dolist (frame (frame-list))
-           (when (string= (safe-persp-name (get-current-persp frame)) persp-nil-name)
-             ;; Take extra steps to ensure no frame ends up in the nil perspective
-             (persp-frame-switch (or (cadr (hash-table-keys *persp-hash*))
-                                     +my/main-workspace)
-                                 frame)))))))
-  (:hook
-   (lambda (&rest _)
-     (when persp-mode
-       (let (persp-before-switch-functions)
-         ;; Try our best to hide the nil perspective.
-         (when (equal (car persp-names-cache) persp-nil-name)
-           (pop persp-names-cache))
-         ;; ...and create a *real* main workspace to fill this role.
-         (unless (or (persp-get-by-name +my/main-workspace)
-                     ;; Start from 2 b/c persp-mode counts the nil workspace
-                     (> (hash-table-count *persp-hash*) 2))
-           (persp-add-new +my/main-workspace))
-         ;; HACK Fix #319: the warnings buffer gets swallowed when creating
-         ;;      `+workspaces-main', so display it ourselves, if it exists.
-         (when-let (warnings (get-buffer "*Warnings*"))
-           (save-excursion
-             (display-buffer-in-side-window
-              warnings '((window-height . shrink-window-if-larger-than-buffer)))))))))
-  (:hook
-   (lambda ()
-     (cond (persp-mode
-            ;; `uniquify' breaks persp-mode. It renames old buffers, which causes
-            ;; errors when switching between perspective (their buffers are
-            ;; serialized by name and persp-mode expects them to have the same
-            ;; name when restored).
-            (when uniquify-buffer-name-style
-              (setq +workspace--old-uniquify-style uniquify-buffer-name-style))
-            (setq uniquify-buffer-name-style nil)
-            ;; Ensure `persp-kill-buffer-query-function' is last
-            (remove-hook 'kill-buffer-query-functions #'persp-kill-buffer-query-function)
-            (add-hook 'kill-buffer-query-functions #'persp-kill-buffer-query-function t)
-            ;; Restrict buffer list to workspace
-            ;; (advice-add #'doom-buffer-list :override #'+workspace-buffer-list)
-            )
-           (t
-            (when +workspace--old-uniquify-style
-              (setq uniquify-buffer-name-style +workspace--old-uniquify-style))
-            ;; (advice-remove #'doom-buffer-list #'+workspace-buffer-list)
-            )))
-   )
-  )
+    (:hook (lambda ()
+             (when persp-mode
+               (dolist (frame (frame-list))
+                 (when (string= (safe-persp-name (get-current-persp frame)) persp-nil-name)
+                   ;; Take extra steps to ensure no frame ends up in the nil perspective
+                   (persp-frame-switch (or (cadr (hash-table-keys *persp-hash*))
+                                           +my/main-workspace)
+                                       frame)))))))
+  (:hook (lambda (&rest _)
+           (when persp-mode
+             (let (persp-before-switch-functions)
+               ;; Try our best to hide the nil perspective.
+               (when (equal (car persp-names-cache) persp-nil-name)
+                 (pop persp-names-cache))
+               ;; ...and create a *real* main workspace to fill this role.
+               (unless (or (persp-get-by-name +my/main-workspace)
+                           ;; Start from 2 b/c persp-mode counts the nil workspace
+                           (> (hash-table-count *persp-hash*) 2))
+                 (persp-add-new +my/main-workspace))
+               ;; HACK Fix #319: the warnings buffer gets swallowed when creating
+               ;;      `+workspaces-main', so display it ourselves, if it exists.
+               (when-let (warnings (get-buffer "*Warnings*"))
+                 (save-excursion
+                   (display-buffer-in-side-window
+                    warnings '((window-height . shrink-window-if-larger-than-buffer)))))))))
+  (:hook (lambda ()
+           (cond (persp-mode
+                  ;; `uniquify' breaks persp-mode. It renames old buffers, which causes
+                  ;; errors when switching between perspective (their buffers are
+                  ;; serialized by name and persp-mode expects them to have the same
+                  ;; name when restored).
+                  (when uniquify-buffer-name-style
+                    (setq +workspace--old-uniquify-style uniquify-buffer-name-style))
+                  (setq uniquify-buffer-name-style nil)
+                  ;; Ensure `persp-kill-buffer-query-function' is last
+                  (remove-hook 'kill-buffer-query-functions #'persp-kill-buffer-query-function)
+                  (add-hook 'kill-buffer-query-functions #'persp-kill-buffer-query-function t))
+                 (t
+                  (when +workspace--old-uniquify-style
+                    (setq uniquify-buffer-name-style +workspace--old-uniquify-style)))))))
 
 (setq global-auto-revert-non-file-buffers t)
 
 (setup (:require paren)
   (show-paren-mode 1))
+
+;; (setup (:pkg aggressive-indent)
+;;   (:with-mode (prog-mode)
+;;     (:hook #'aggressive-indent-mode)))
+
+;; (add-hook 'prog-mode-hook #'electric-indent-mode)
 
 (setq tramp-default-method "ssh")
 
@@ -616,12 +725,23 @@ throws an error."
 (setq-default show-trailing-whitespace t)
 
 (setup (:pkg lispyville)
-  (:hook-into lisp-mode-hook
-              emacs-lisp-mode-hook
-              clojure-mode-hook
-              scheme-mode-hook)
-  (lispyville-set-key-theme '(slurp/barf-lispy operators c-w additional commentary))
-  (lispy-mode))
+  (:hook-into lispy-mode)
+  (:when-loaded (lispyville-set-key-theme
+                 '(slurp/barf-lispy operators c-w additional commentary))))
+
+(setup (:pkg lispy)
+  (:option lispy-close-quotes-at-end-p t)
+  (:hook-into lisp-mode
+              emacs-lisp-mode
+              ielm-mode
+              scheme-mode
+              racket-mode
+              hy-mode
+              lfe-mode
+              dune-mode
+              clojure-mode
+              fennel-mode)
+  (:when-loaded (lispy-set-key-theme '(lispy c-digits))))
 
 (add-hook 'prog-mode-hook
           (lambda ()
@@ -637,6 +757,9 @@ throws an error."
 (setup (:pkg envrc)
   (:ignore-buffers "\\*envrc\\*")
   (envrc-global-mode))
+
+(setup (:pkg marginalia)
+  (marginalia-mode))
 
 (setup savehist
   (setq history-length 25)
@@ -690,6 +813,10 @@ folder, otherwise delete a word"
   (:when-loaded
     (plist-put kind-icon-default-style :height 0.833)))
 
+(setup (:pkg cape)
+  (:require cape)
+  (add-to-list 'completion-at-point-functions #'cape-file))
+
 (setup (:pkg orderless)
   (require 'orderless)
   (setq completion-styles '(orderless)
@@ -729,8 +856,12 @@ folder, otherwise delete a word"
 
 (setup (:pkg cider)
   (:option cider-clojure-cli-global-options "-Adev"
+           cider-repl-display-help-banner nil
            cider-auto-mode nil)
   (:ignore-buffers "\\*cider-repl.*" "\\*nrepl-server .*")
+  (:display-rule "\\*cider-repl.*"
+                 (display-buffer-in-side-window)
+                 (window-height  . 0.20))
   (:with-map clojure-mode-map
     (:local-leader
       "e" '(nil :which-key "Eval")
@@ -870,5 +1001,14 @@ folder, otherwise delete a word"
 
 (setup (:pkg eglot)
   (:ignore-buffers "^\\*EGLOT .*")
-  (:with-mode (clojure-mode clojurescript-mode-hook go-mode)
-    (:hook #'eglot-ensure)))
+  (:option eglot-confirm-server-initiated-edits nil)
+  (:with-mode (clojure-mode clojurescript-mode go-mode)
+    (:hook #'eglot-ensure))
+  (:with-mode eglot-managed-mode
+    (:hook (lambda ()
+             "Make the eglot capf have less priority"
+             (when (derived-mode-p 'cider-mode)
+               (remove-from-list completion-at-point-functions t)
+               (remove-from-list completion-at-point-functions #'eglot-completion-at-point)
+               (add-to-list 'completion-at-point-functions #'eglot-completion-at-point t)
+               (add-to-list 'completion-at-point-functions t t))))))
