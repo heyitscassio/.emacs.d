@@ -977,6 +977,7 @@ folder, otherwise delete a word"
   (:leader
     "g" '(:ignore t :which-key "Git")
     "gg" '(magit :which-key "Magit"))
+  (add-hook 'git-commit-mode-hook 'evil-insert-state)
   (defun my/magit-buffer-function (buffer)
     (let ((buffer-mode (buffer-local-value 'major-mode buffer)))
       (display-buffer
