@@ -629,10 +629,6 @@ throws an error."
         (error "%s is not an available workspace" name)))
     (let ((old-name (+workspace-current-name)))
       (unless (equal old-name name)
-        ;; (setq +workspace--last
-        ;;       (or (and (not (string= old-name persp-nil-name))
-        ;;                old-name)
-        ;;           +workspaces-main))
         (persp-frame-switch name))
       (equal (+workspace-current-name) name)))
 
