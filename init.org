@@ -311,14 +311,16 @@ hides minor modes from modeline
 ** Colorscheme
 
 #+begin_src emacs-lisp
-  ;; (setup (:pkg modus-themes)
-  ;;     (require-theme 'modus-themes)
-  ;;     (setq modus-themes-org-blocks 'gray-background
-  ;;         modus-themes-italic-constructs t)
-  ;;     (load-theme 'modus-vivendi :no-confirm))
-
   (setup (:pkg ef-themes)
-    (load-theme 'ef-winter :no-confirm))
+    (defun my/ef-themes-custom-faces ()
+      "My customizations on top of the Ef themes.
+  This function is added to the `ef-themes-post-load-hook'."
+      (ef-themes-with-colors
+        (custom-set-faces
+         `(mode-line ((,c :box (:line-width (-1 . 4) :color ,bg-mode-line))))
+         `(mode-line-inactive ((,c :box (:line-width (-1 . 4) :color ,bg-tab-bar)))))))
+    (add-hook 'ef-themes-post-load-hook #'my/ef-themes-custom-faces)
+    (ef-themes-select 'ef-winter))
 #+end_src
 
 * Paths
@@ -619,7 +621,7 @@ hides minor modes from modeline
          " "
          (vc-git--symbolic-ref current-file)))))
 
-  (defun mode-line-fill (reserve)
+  (defun +my-mode-line/fill (reserve)
     "Return empty space using FACE and leaving RESERVE space on the right."
     (when
       (and window-system (eq 'right (get-scroll-bar-mode)))
@@ -628,12 +630,15 @@ hides minor modes from modeline
       'display
       `((space :align-to (- (+ right right-fringe right-margin) ,reserve)))))
 
+  (defun +my-mode-line/escape (str)
+    (replace-regexp-in-string "%" "%%" str))
+
   (defun +my-mode-line/format (left right)
-    (let ((right-format (format-mode-line right))
-          (left-format (format-mode-line left)))
+    (let ((right-format (+my-mode-line/escape (format-mode-line right)))
+          (left-format (+my-mode-line/escape (format-mode-line left))))
       (list
        left-format
-       (mode-line-fill (length right-format))
+       (+my-mode-line/fill (length right-format))
        right-format)))
 
   (defun +my-modeline/show-persp ()
@@ -661,8 +666,8 @@ hides minor modes from modeline
        (list
         "%e "
         '(:eval (propertize "%b " 'help-echo (buffer-file-name)))
-        "[%*] "
-        '(:eval (list (nyan-create))))
+        "[%+] "
+        mode-line-position)
        (list
         '(:eval (+my-modeline/show-persp))
         " "
@@ -675,6 +680,12 @@ hides minor modes from modeline
         " "
         mode-name
         " ")))))
+
+
+
+
+  (+my-mode-line/format (list "%m") nil)
+
 #+end_src
 
 ** Doom modeline
