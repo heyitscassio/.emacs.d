@@ -887,6 +887,9 @@ folder, otherwise delete a word"
 (setup (:pkg nix-mode))
 
 (setup (:pkg emms)
+  (:leader
+    "o"  '(:ignore t :which-key "Open")
+    "om" '(emms-smart-browse :which-key "EMMS"))
   (defun my-emms-browser-format-line (bdata &optional target)
     "Return a propertized string to be inserted in the buffer."
     (unless target
@@ -966,10 +969,6 @@ folder, otherwise delete a word"
   ;; (emms-mode-line-disable)
   (setq emms-source-file-default-directory "/mnt/extern/music/")
   (advice-add 'emms-browser-format-line :override #'my-emms-browser-format-line))
-  ;;(my/leader-key-def
-    ;;:keymap 'override
-    ;;"o"  '(:ignore t :which-key "Open")
-    ;;"om" '(emms-smart-browse :which-key "play / pause")))
 
 (setup (:pkg magit)
   (:option magit-display-buffer-function #'my/magit-buffer-function)

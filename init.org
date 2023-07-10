@@ -1144,6 +1144,9 @@ hides minor modes from modeline
 
 #+begin_src emacs-lisp
   (setup (:pkg emms)
+    (:leader
+      "o"  '(:ignore t :which-key "Open")
+      "om" '(emms-smart-browse :which-key "EMMS"))
     (defun my-emms-browser-format-line (bdata &optional target)
       "Return a propertized string to be inserted in the buffer."
       (unless target
@@ -1223,10 +1226,6 @@ hides minor modes from modeline
     ;; (emms-mode-line-disable)
     (setq emms-source-file-default-directory "/mnt/extern/music/")
     (advice-add 'emms-browser-format-line :override #'my-emms-browser-format-line))
-    ;;(my/leader-key-def
-      ;;:keymap 'override
-      ;;"o"  '(:ignore t :which-key "Open")
-      ;;"om" '(emms-smart-browse :which-key "play / pause")))
 #+end_src
 
 ** Magit
