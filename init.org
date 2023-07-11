@@ -947,7 +947,65 @@ hides minor modes from modeline
                 dune-mode
                 clojure-mode
                 fennel-mode)
-    (:when-loaded (lispy-set-key-theme '(lispy c-digits))))
+    (:when-loaded
+      (lispy-set-key-theme '(lispy c-digits))
+    (define-minor-mode lispy-mode
+      "Minor mode for navigating and editing LISP dialects.
+
+  When `lispy-mode' is on, most unprefixed keys,
+  i.e. [a-zA-Z+-./<>], conditionally call commands instead of
+  self-inserting. The condition (called special further on) is one
+  of:
+
+  - the point is before \"(\"
+  - the point is after \")\"
+  - the region is active
+
+  For instance, when special, \"j\" moves down one sexp, otherwise
+  it inserts itself.
+
+  When special, [0-9] call `digit-argument'.
+
+  When `lispy-mode' is on, \"[\" and \"]\" move forward and
+  backward through lists, which is useful to move into special.
+
+  \\{lispy-mode-map}"
+      :keymap lispy-mode-map
+      :group 'lispy
+      :lighter " LY"
+      (if lispy-mode
+          (progn
+            (require 'eldoc)
+            (eldoc-remove-command 'special-lispy-eval)
+            (eldoc-remove-command 'special-lispy-x)
+            (eldoc-add-command 'lispy-space)
+            (setq lispy-old-outline-settings
+                  (cons outline-regexp outline-level))
+            (setq-local outline-level 'lispy-outline-level)
+            (cond ((eq major-mode 'latex-mode)
+                   (setq-local lispy-outline "^\\(?:%\\*+\\|\\\\\\(?:sub\\)?section{\\)")
+                   (setq lispy-outline-header "%")
+                   (setq-local outline-regexp "\\(?:%\\*+\\|\\\\\\(?:sub\\)?section{\\)"))
+                  ((eq major-mode 'clojure-mode)
+                   (eval-after-load 'le-clojure
+                     '(add-hook 'completion-at-point-functions #'lispy-clojure-complete-at-point nil t))
+                   (setq-local outline-regexp (substring lispy-outline 1)))
+                  ((eq major-mode 'python-mode)
+                   (setq-local lispy-outline "^#\\*+")
+                   (setq lispy-outline-header "#")
+                   (setq-local outline-regexp "#\\*+")
+                   (setq-local outline-heading-end-regexp "\n"))
+                  (t
+                   (setq-local outline-regexp (substring lispy-outline 1))))
+            (when (called-interactively-p 'any)
+              (mapc #'lispy-raise-minor-mode
+                    (cons 'lispy-mode lispy-known-verbs)))
+            (font-lock-add-keywords major-mode lispy-font-lock-keywords))
+        (when lispy-old-outline-settings
+          (setq outline-regexp (car lispy-old-outline-settings))
+          (setq outline-level (cdr lispy-old-outline-settings))
+          (setq lispy-old-outline-settings nil))
+        (font-lock-remove-keywords major-mode lispy-font-lock-keywords)))))
 #+end_src
 
 ** Pairs
@@ -1062,7 +1120,7 @@ hides minor modes from modeline
 #+begin_src emacs-lisp
   (setup (:pkg orderless)
     (require 'orderless)
-    (setq completion-styles '(orderless)
+    (setq completion-styles '(orderless basic)
           completion-category-defaults nil
           completion-category-overrides '((file (styles . (partial-completion))))))
 #+end_src
@@ -1110,7 +1168,8 @@ hides minor modes from modeline
   (setup (:pkg cider)
     (:option cider-clojure-cli-global-options "-Adev"
              cider-repl-display-help-banner nil
-             cider-auto-mode nil)
+             ;; cider-auto-mode nil
+             )
     (:ignore-buffers "\\*cider-repl.*" "\\*nrepl-server .*")
     (:display-rule "\\*cider-repl.*"
                    (display-buffer-in-side-window)
@@ -1279,9 +1338,29 @@ hides minor modes from modeline
     (:with-mode eglot-managed-mode
       (:hook (lambda ()
                "Make the eglot capf have less priority"
-               (when (derived-mode-p 'cider-mode)
+               (when cider-mode
                  (remove-from-list completion-at-point-functions t)
                  (remove-from-list completion-at-point-functions #'eglot-completion-at-point)
                  (add-to-list 'completion-at-point-functions #'eglot-completion-at-point t)
                  (add-to-list 'completion-at-point-functions t t))))))
+#+end_src
+** Sideline
+
+#+begin_src emacs-lisp
+  (setup (:pkg sideline)
+    (:option sideline-backends-right '(sideline-flymake))
+    (:hook-into flymake-mode))
+
+  (setup (:pkg sideline-flymake)
+    (:option sideline-flymake-display-mode 'line))
+#+end_src
+
+* Eshell
+
+#+begin_src emacs-lisp
+  (setup (:pkg eshell-toggle)
+    (:leader
+      "o o" '(eshell-toggle :which-key "Toggle Eshell"))
+    (:option eshell-toggle-size-fraction 3
+             eshell-toggle-run-command nil))
 #+end_src
