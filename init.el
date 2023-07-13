@@ -265,6 +265,13 @@ This function is added to the `ef-themes-post-load-hook'."
   (setq evil-echo-state nil)
   (setq evil-auto-indent t)
 
+  (defun my/elisp-lookup ()
+    (interactive)
+    (let ((sym (symbol-at-point)))
+      (if sym
+          (describe-symbol (symbol-at-point))
+        (message "Invalid symbol"))))
+
   (evil-mode 1)
 
   (dolist (mode '(custom-mode
@@ -277,6 +284,9 @@ This function is added to the `ef-themes-post-load-hook'."
                   sauron-mode
                   term-mode))
     (add-to-list 'evil-emacs-state-modes mode))
+
+  (:with-hook emacs-lisp-mode
+    (:hook (setq evil-lookup-func #'my/elisp-lookup)))
 
   (define-key evil-insert-state-map (kbd "C-g") 'evil-normal-state)
   (define-key evil-insert-state-map (kbd "C-h") 'evil-delete-backward-char-and-join)
@@ -524,11 +534,6 @@ This function is added to the `ef-themes-post-load-hook'."
       " "
       mode-name
       " ")))))
-
-
-
-
-(+my-mode-line/format (list "%m") nil)
 
 ;; (setup (:pkg nerd-icons))
 
@@ -1035,6 +1040,7 @@ folder, otherwise delete a word"
   (:leader
     "g" '(:ignore t :which-key "Git")
     "gg" '(magit :which-key "Magit"))
+    "gc" '(magit-smerge-keep-current :which-key "Keep current")
   (add-hook 'git-commit-mode-hook 'evil-insert-state)
   (defun my/magit-buffer-function (buffer)
     (let ((buffer-mode (buffer-local-value 'major-mode buffer)))
