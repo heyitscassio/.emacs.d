@@ -199,7 +199,7 @@
 
 (defun my/set-font-faces ()
   (if window-system
-      (let* ((main-font "Iosevka Nerd Font Mono:pixelsize=21")
+      (let* ((main-font "Go Mono Nerd Font:pixelsize=22")
              (fallback "monospace")
              (font (if (x-list-fonts main-font) main-font fallback)))
         (set-face-attribute 'default nil :font font)
@@ -211,16 +211,34 @@
                 (with-selected-frame frame (my/set-font-faces))))
   (my/set-font-faces))
 
-(setup (:pkg ef-themes)
-  (defun my/ef-themes-custom-faces ()
+;; (setup (:pkg ef-themes)
+;;   (defun my/ef-themes-custom-faces ()
+;;     "My customizations on top of the Ef themes.
+;; This function is added to the `ef-themes-post-load-hook'."
+;;     (ef-themes-with-colors
+;;       (custom-set-faces
+;;        `(mode-line ((,c :box (:line-width (-1 . 4) :color ,bg-mode-line))))
+;;        `(mode-line-inactive ((,c :box (:line-width (-1 . 4) :color ,bg-tab-bar)))))))
+;;   (add-hook 'ef-themes-post-load-hook #'my/ef-themes-custom-faces)
+;;   (ef-themes-select 'ef-winter))
+
+(setup (:pkg modus-themes)
+  (:require modus-themes)
+  (:option modus-themes-common-palette-overrides modus-themes-preset-overrides-intense
+           modus-themes-bold-constructs nil
+           modus-themes-italic-constructs t
+           modus-themes-org-blocks 'gray-background)
+  (defun my/modus-themes-custom-faces ()
     "My customizations on top of the Ef themes.
 This function is added to the `ef-themes-post-load-hook'."
-    (ef-themes-with-colors
+    (modus-themes-with-colors
       (custom-set-faces
-       `(mode-line ((,c :box (:line-width (-1 . 4) :color ,bg-mode-line))))
-       `(mode-line-inactive ((,c :box (:line-width (-1 . 4) :color ,bg-tab-bar)))))))
-  (add-hook 'ef-themes-post-load-hook #'my/ef-themes-custom-faces)
-  (ef-themes-select 'ef-winter))
+       `(mode-line ((,c :box (:line-width (-1 . 4) :color ,bg-mode-line-active))))
+       `(mode-line-inactive ((,c :box (:line-width (-1 . 4) :color ,bg-mode-line-inactive)))))))
+  (add-hook 'modus-themes-post-load-hook #'my/modus-themes-custom-faces)
+  (modus-themes-select 'modus-operandi))
+
+(global-prettify-symbols-mode)
 
 ;; Change the user-emacs-directory to keep unwanted things out of ~/.emacs.d
 (setq user-emacs-directory (expand-file-name "~/.cache/emacs/")
@@ -411,12 +429,15 @@ This function is added to the `ef-themes-post-load-hook'."
         org-cycle-separator-lines 2
         org-capture-bookmark nil)
 
-  ;; (setq org-modules
-  ;;   '(org-crypt
-  ;;     org-habit
-  ;;     org-bookmark
-  ;;     org-eshell
-  ;;     org-irc))
+  (require 'ox-latex)
+  (add-to-list 'org-latex-packages-alist '("" "minted"))
+
+  (setq org-latex-listings 'minted)
+
+  (setq org-latex-pdf-process
+        '("pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"
+          "pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"
+          "pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"))
 
   (setq org-refile-targets '((nil :maxlevel . 1)
                              (org-agenda-files :maxlevel . 1)))
