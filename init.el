@@ -162,7 +162,10 @@
 (dolist (mode '(text-mode-hook
                 prog-mode-hook
                 conf-mode-hook))
-  (add-hook mode (lambda () (display-line-numbers-mode 1))))
+  (add-hook mode (lambda ()
+                   (setq display-line-numbers-width-start t)
+                   ;; (setq display-line-numbers-width 1)
+                   (display-line-numbers-mode 1))))
 
 ;; Override some modes which derive from the above
 (dolist (mode '(org-mode-hook))
@@ -225,7 +228,6 @@
 (setup (:pkg modus-themes)
   (:require modus-themes)
   (:option modus-themes-common-palette-overrides modus-themes-preset-overrides-intense
-           modus-themes-bold-constructs nil
            modus-themes-italic-constructs t
            modus-themes-org-blocks 'gray-background)
   (defun my/modus-themes-custom-faces ()
@@ -233,6 +235,7 @@
 This function is added to the `ef-themes-post-load-hook'."
     (modus-themes-with-colors
       (custom-set-faces
+       `(fill-column-indicator ((,c :height 1.0 :background ,bg-inactive :foreground ,bg-inactive)))
        `(mode-line ((,c :box (:line-width (-1 . 4) :color ,bg-mode-line-active))))
        `(mode-line-inactive ((,c :box (:line-width (-1 . 4) :color ,bg-mode-line-inactive)))))))
   (add-hook 'modus-themes-post-load-hook #'my/modus-themes-custom-faces)
@@ -430,9 +433,9 @@ This function is added to the `ef-themes-post-load-hook'."
         org-capture-bookmark nil)
 
   (require 'ox-latex)
-  (add-to-list 'org-latex-packages-alist '("" "minted"))
+  ;; (add-to-list 'org-latex-packages-alist '("" "minted"))
 
-  (setq org-latex-listings 'minted)
+  ;; (setq org-latex-listings 'minted)
 
   (setq org-latex-pdf-process
         '("pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"
@@ -901,7 +904,8 @@ folder, otherwise delete a word"
   (:load-after corfu
     (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
   (:when-loaded
-    (plist-put kind-icon-default-style :height 0.833)))
+    (plist-put kind-icon-default-style :height 0.6)
+    (plist-put kind-icon-default-style :padding -1)))
 
 (setup (:pkg cape)
   (:require cape)
@@ -947,8 +951,7 @@ folder, otherwise delete a word"
 (setup (:pkg cider)
   (:option cider-clojure-cli-global-options "-Adev"
            cider-repl-display-help-banner nil
-           ;; cider-auto-mode nil
-           )
+           cider-eval-result-duration 'change)
   (:ignore-buffers "\\*cider-repl.*" "\\*nrepl-server .*")
   (:display-rule "\\*cider-repl.*"
                  (display-buffer-in-side-window)
@@ -963,7 +966,32 @@ folder, otherwise delete a word"
       "j" '(cider-jack-in-clj :which-key "Jack-in clj")
       "J" '(cider-jack-in-cljs :which-key "Jack-in cljs")))
   (add-to-list 'completion-category-defaults '(cider (styles basic)))
-  (add-hook 'clojure-mode-hook #'cider-mode))
+  (add-hook 'clojure-mode-hook #'cider-mode)
+  (autoload 'cider--make-result-overlay "cider-overlays")
+
+  ;; Cider eval overlays in elisp
+  (defun my/eval-overlay (value point)
+    (cider--make-result-overlay (format "%S" value)
+      :where point)
+    value)
+
+  (advice-add 'eval-region :around
+              (lambda (f beg end &rest r)
+                (my/eval-overlay
+                 (apply f beg end r)
+                 end)))
+
+  (advice-add 'eval-last-sexp :filter-return
+              (lambda (r)
+                (my/eval-overlay r (point))))
+
+  (advice-add 'eval-defun :filter-return
+              (lambda (r)
+                (my/eval-overlay
+                 r
+                 (save-excursion
+                   (end-of-defun)
+                   (point))))))
 
 ;; (setup (:pkg nix-mode)
 ;;   (:file-match "*.nix"))
@@ -1099,11 +1127,12 @@ folder, otherwise delete a word"
   (:with-mode eglot-managed-mode
     (:hook (lambda ()
              "Make the eglot capf have less priority"
-             (when cider-mode
-               (remove-from-list completion-at-point-functions t)
-               (remove-from-list completion-at-point-functions #'eglot-completion-at-point)
-               (add-to-list 'completion-at-point-functions #'eglot-completion-at-point t)
-               (add-to-list 'completion-at-point-functions t t))))))
+             (when (boundp 'cider-mode)
+               (when cider-mode
+                 (remove-from-list completion-at-point-functions t)
+                 (remove-from-list completion-at-point-functions #'eglot-completion-at-point)
+                 (add-to-list 'completion-at-point-functions #'eglot-completion-at-point t)
+                 (add-to-list 'completion-at-point-functions t t)))))))
 
 (setup (:pkg sideline)
   (:option sideline-backends-right '(sideline-flymake))
