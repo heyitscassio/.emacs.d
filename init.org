@@ -295,9 +295,15 @@ hides minor modes from modeline
 ** Fonts
 
 #+begin_src emacs-lisp
+  (defvar my-font)
+
+  (if (string= (system-name) "intus")
+      (setq my-font "Go Mono Nerd Font:pixelsize=15")
+    (setq my-font "Go Mono Nerd Font:pixelsize=22"))
+
   (defun my/set-font-faces ()
     (if window-system
-        (let* ((main-font "Go Mono Nerd Font:pixelsize=22")
+        (let* ((main-font my-font)
                (fallback "monospace")
                (font (if (x-list-fonts main-font) main-font fallback)))
           (set-face-attribute 'default nil :font font)

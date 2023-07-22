@@ -97,11 +97,11 @@
 
 (defun my/filter-straight-recipe (recipe)
     (let* ((plist (cdr recipe))
-	(name (plist-get plist :straight)))
+        (name (plist-get plist :straight)))
     (cons (if (and name (not (equal name t)))
-		name
-	    (car recipe))
-	    (plist-put plist :straight nil))))
+      	  name
+            (car recipe))
+            (plist-put plist :straight nil))))
 
 (setup-define :pkg
     (lambda (&rest recipe)
@@ -200,9 +200,15 @@
   (:leader
     "o r" '(rainbow-mode :which-key "Toggle rainbow mode")))
 
+(defvar my-font)
+
+(if (string= (system-name) "intus")
+    (setq my-font "Go Mono Nerd Font:pixelsize=15")
+  (setq my-font "Go Mono Nerd Font:pixelsize=22"))
+
 (defun my/set-font-faces ()
   (if window-system
-      (let* ((main-font "Go Mono Nerd Font:pixelsize=22")
+      (let* ((main-font my-font)
              (fallback "monospace")
              (font (if (x-list-fonts main-font) main-font fallback)))
         (set-face-attribute 'default nil :font font)
