@@ -202,11 +202,12 @@
 
 (defun my/set-font-faces ()
   (if window-system
-      (let* ((main-font "Go Mono Nerd Font:pixelsize=22")
+      (let* ((main-font "M PLUS 1 Code:size=21")
              (fallback "monospace")
              (font (if (x-list-fonts main-font) main-font fallback)))
         (set-face-attribute 'default nil :font font)
-        (set-face-attribute 'fixed-pitch nil :font font))))
+        (set-face-attribute 'fixed-pitch nil :font font)
+        (set-face-attribute 'bold nil :font (concat main-font ":weight=medium")))))
 
 (if (daemonp)
     (add-hook 'after-make-frame-functions
@@ -285,6 +286,13 @@ This function is added to the `ef-themes-post-load-hook'."
   (setq evil-undo-system 'undo-tree)
   (setq evil-echo-state nil)
   (setq evil-auto-indent t)
+
+  (setq evil-normal-state-tag (propertize " " 'face 'font-lock-number-face)
+        evil-emacs-state-tag (propertize " " 'face 'font-lock-warning-face)
+        evil-insert-state-tag (propertize " " 'face 'font-lock-string-face)
+        evil-motion-state-tag (propertize " " 'face 'font-lock-constant-face)
+        evil-visual-state-tag (propertize " " 'face 'font-lock-escape-face)
+        evil-operator-state-tag (propertize " " 'face 'font-lock-function-name-face))
 
   (defun my/elisp-lookup ()
     (interactive)
@@ -391,6 +399,8 @@ This function is added to the `ef-themes-post-load-hook'."
   (:leader
     "b" '(nil :which-key "Buffers")
     "br" '(revert-buffer :which-key "revert buffer")
+    "bd" '(kill-current-buffer :which-key "kill current buffer")
+
     "f" '(nil :which-key "Files")
     "ff" '(find-file :which-key "Ripgrep")
 
@@ -536,14 +546,16 @@ This function is added to the `ef-themes-post-load-hook'."
       (add-to-list 'formatted "]")
       (reverse formatted))))
 
+
 (setq-default
  mode-line-format
  (list
   '(:eval
     (+my-mode-line/format
      (list
-      "%e "
-      '(:eval (propertize "%b " 'help-echo (buffer-file-name)))
+      evil-mode-line-tag
+      '(:propertize "%e " face warning)
+      `(:propertize "%b " face mode-line-emphasis help-echo ,(buffer-file-name))
       "[%+] "
       mode-line-position)
      (list
@@ -600,6 +612,7 @@ This function is added to the `ef-themes-post-load-hook'."
 ;; Taken from doom
 (setup (:pkg persp-mode)
   (:leader
+    "bD" '(persp-kill-buffer :which-key "Kill buffer")
     "TAB" '(:ignore t :which-key "Perspective")
     "TAB n" '(persp-switch :which-key "Switch perspective")
     "TAB l" '(persp-next :which-key "Next perspective")
@@ -886,7 +899,7 @@ folder, otherwise delete a word"
     (:bind "C-s" corfu-quit
            [tab] corfu-next
            [backtab] corfu-previous))
-  (:hook-into prog-mode-hook)
+  (:hook-into prog-mode-hook eshell-mode-hook)
   (:option corfu-cycle t
            corfu-auto t
            corfu-auto-delay 0.1
