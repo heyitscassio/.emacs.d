@@ -200,9 +200,15 @@
   (:leader
     "o r" '(rainbow-mode :which-key "Toggle rainbow mode")))
 
+(defvar my-font)
+
+(if (string= (system-name) "intus")
+    (setq my-font "M PLUS 1 Code:pixelsize=14")
+  (setq my-font "M PLUS 1 Code:size=21"))
+
 (defun my/set-font-faces ()
   (if window-system
-      (let* ((main-font "M PLUS 1 Code:size=21")
+      (let* ((main-font my-font)
              (fallback "monospace")
              (font (if (x-list-fonts main-font) main-font fallback)))
         (set-face-attribute 'default nil :font font)
