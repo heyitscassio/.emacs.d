@@ -218,8 +218,8 @@ If PATH does not exist, abort the evaluation."
 (defvar my-font)
 
 (if (string= (system-name) "intus")
-    (setq my-font "Iosevka Nerd Font:pixelsize=14")
-  (setq my-font "Iosevka Nerd Font:size=21"))
+    (setq my-font "GoMono Nerd Font:pixelsize=14")
+  (setq my-font "GoMono Nerd Font:size=21"))
 
 (defun my/set-font-faces ()
   (if window-system
@@ -227,8 +227,7 @@ If PATH does not exist, abort the evaluation."
              (fallback "monospace")
              (font (if (x-list-fonts main-font) main-font fallback)))
         (set-face-attribute 'default nil :font font)
-        (set-face-attribute 'fixed-pitch nil :font font)
-        (set-face-attribute 'bold nil :font (concat main-font ":weight=bold")))))
+        (set-face-attribute 'fixed-pitch nil :font font))))
 
 (if (daemonp)
     (add-hook 'after-make-frame-functions
