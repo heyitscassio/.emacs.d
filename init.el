@@ -70,6 +70,21 @@
   :debug '(form)
   :repeatable t)
 
+(setup-define :load-from
+    (lambda (path)
+      `(let ((path* (expand-file-name ,path)))
+         (if (file-exists-p path*)
+             (add-to-list 'load-path path*)
+           ,(setup-quit))))
+  :documentation "Add PATH to load path.
+This macro can be used as NAME, and it will replace itself with
+the nondirectory part of PATH.
+If PATH does not exist, abort the evaluation."
+  :shorthand (lambda (args)
+               (intern
+                (file-name-nondirectory
+                 (directory-file-name (cadr args))))))
+
 (setup-define :leader
   (lambda (&rest args)
     `(with-eval-after-load 'general
@@ -97,11 +112,11 @@
 
 (defun my/filter-straight-recipe (recipe)
     (let* ((plist (cdr recipe))
-	(name (plist-get plist :straight)))
+        (name (plist-get plist :straight)))
     (cons (if (and name (not (equal name t)))
-		name
-	    (car recipe))
-	    (plist-put plist :straight nil))))
+      	  name
+            (car recipe))
+            (plist-put plist :straight nil))))
 
 (setup-define :pkg
     (lambda (&rest recipe)
@@ -203,8 +218,8 @@
 (defvar my-font)
 
 (if (string= (system-name) "intus")
-    (setq my-font "M PLUS 1 Code:pixelsize=14")
-  (setq my-font "M PLUS 1 Code:size=21"))
+    (setq my-font "Iosevka Nerd Font:pixelsize=14")
+  (setq my-font "Iosevka Nerd Font:size=21"))
 
 (defun my/set-font-faces ()
   (if window-system
@@ -213,7 +228,7 @@
              (font (if (x-list-fonts main-font) main-font fallback)))
         (set-face-attribute 'default nil :font font)
         (set-face-attribute 'fixed-pitch nil :font font)
-        (set-face-attribute 'bold nil :font (concat main-font ":weight=medium")))))
+        (set-face-attribute 'bold nil :font (concat main-font ":weight=bold")))))
 
 (if (daemonp)
     (add-hook 'after-make-frame-functions
@@ -420,6 +435,8 @@ This function is added to the `ef-themes-post-load-hook'."
     "hk" '(describe-key :which-key "Describe Key")
 
     "o" '(nil :which-key "Apps")
+    "p" '(nil :which-key "Project")
+    "pf" '(project-find-file :which-key "Project find file")
     "qK" '(save-buffers-kill-emacs :which-key "Apps")))
 
 ;; TODO: Mode this to another section
@@ -912,19 +929,14 @@ folder, otherwise delete a word"
            corfu-auto-prefix 2
            corfu-quit-no-match nil
            corfu-preselect 'prompt)
+  (:load-from "straight/build/corfu/extensions")
+  (:require corfu-popupinfo)
+  (:hook #'corfu-popupinfo-mode)
   (defun corfu-enable-in-minibuffer ()
     "Enable Corfu in the minibuffer if `completion-at-point' is bound."
     (when (where-is-internal #'completion-at-point (list (current-local-map)))
       (corfu-mode 1)))
   (add-hook 'minibuffer-setup-hook #'corfu-enable-in-minibuffer))
-
-(setup (:pkg kind-icon)
-  (:option kind-icon-default-face 'corfu-default)
-  (:load-after corfu
-    (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
-  (:when-loaded
-    (plist-put kind-icon-default-style :height 0.6)
-    (plist-put kind-icon-default-style :padding -1)))
 
 (setup (:pkg cape)
   (:require cape)
@@ -932,7 +944,8 @@ folder, otherwise delete a word"
 
 (setup (:pkg orderless)
   (require 'orderless)
-  (setq completion-styles '(orderless basic)
+  (setq orderless-matching-styles '(orderless-flex orderless-literal orderless-regexp)
+        completion-styles '(orderless basic)
         completion-category-defaults nil
         completion-category-overrides '((file (styles . (partial-completion))))))
 
