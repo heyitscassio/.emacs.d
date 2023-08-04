@@ -983,7 +983,8 @@ folder, otherwise delete a word"
 (setup (:pkg cider)
   (:option cider-clojure-cli-global-options "-Adev"
            cider-repl-display-help-banner nil
-           cider-eval-result-duration 'change)
+           cider-eval-result-duration 'change
+           cider-repl-pop-to-buffer-on-connect 'display-only)
   (:ignore-buffers "\\*cider-repl.*" "\\*nrepl-server .*")
   (:display-rule "\\*cider-repl.*"
                  (display-buffer-in-side-window)
