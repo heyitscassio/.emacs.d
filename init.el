@@ -219,7 +219,7 @@ If PATH does not exist, abort the evaluation."
 
 (if (string= (system-name) "intus")
     (setq my-font "GoMono Nerd Font:pixelsize=14")
-  (setq my-font "GoMono Nerd Font:size=21"))
+  (setq my-font "GoMono Nerd Font:size=20"))
 
 (defun my/set-font-faces ()
   (if window-system
