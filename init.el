@@ -987,6 +987,7 @@ folder, otherwise delete a word"
   (:ignore-buffers "\\*cider-repl.*" "\\*nrepl-server .*")
   (:display-rule "\\*cider-repl.*"
                  (display-buffer-in-side-window)
+                 (dedicated . t)
                  (window-height  . 0.20))
   (:with-map clojure-mode-map
     (:local-leader
@@ -1030,6 +1031,8 @@ folder, otherwise delete a word"
 
 
 (setup (:pkg nix-mode))
+
+(setup (:pkg lua-mode))
 
 (setup (:pkg emms)
   (:leader
@@ -1150,6 +1153,14 @@ folder, otherwise delete a word"
                                  magit-status-mode))))
                 '(display-buffer-same-window))
                nil)))))
+
+(setup (:pkg restclient)
+  (defun restclient-buffer ()
+    (interactive)
+    (switch-to-buffer "restclient.http")
+    (restclient-mode))
+  (:leader
+    "o r" '(restclient-buffer :which-key "Open restclient buffer")))
 
 (setup (:pkg eglot)
   (:ignore-buffers "^\\*EGLOT .*")

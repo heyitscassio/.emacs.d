@@ -1238,6 +1238,7 @@ hides minor modes from modeline
     (:ignore-buffers "\\*cider-repl.*" "\\*nrepl-server .*")
     (:display-rule "\\*cider-repl.*"
                    (display-buffer-in-side-window)
+                   (dedicated . t)
                    (window-height  . 0.20))
     (:with-map clojure-mode-map
       (:local-leader
@@ -1286,6 +1287,13 @@ hides minor modes from modeline
 
   (setup (:pkg nix-mode))
 #+end_src
+
+** Lua
+
+#+begin_src emacs-lisp
+  (setup (:pkg lua-mode))
+#+end_src
+
 
 * Programs
 
@@ -1416,6 +1424,19 @@ hides minor modes from modeline
                   '(display-buffer-same-window))
                  nil)))))
 #+end_src
+
+** Restclient
+
+#+begin_src emacs-lisp
+  (setup (:pkg restclient)
+    (defun restclient-buffer ()
+      (interactive)
+      (switch-to-buffer "restclient.http")
+      (restclient-mode))
+    (:leader
+      "o r" '(restclient-buffer :which-key "Open restclient buffer")))
+#+end_src
+
 
 * LSP
 ** Eglot
