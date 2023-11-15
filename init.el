@@ -248,19 +248,17 @@ If PATH does not exist, abort the evaluation."
 
 (setup (:pkg modus-themes)
   (:require modus-themes)
-  (:option modus-themes-common-palette-overrides modus-themes-preset-overrides-intense
+  (:option modus-themes-common-palette-overrides modus-themes-preset-overrides-faint
            modus-themes-italic-constructs t
            modus-themes-org-blocks 'gray-background)
   (defun my/modus-themes-custom-faces ()
-    "My customizations on top of the Ef themes.
-This function is added to the `ef-themes-post-load-hook'."
     (modus-themes-with-colors
       (custom-set-faces
        `(fill-column-indicator ((,c :height 1.0 :background ,bg-inactive :foreground ,bg-inactive)))
        `(mode-line ((,c :box (:line-width (-1 . 4) :color ,bg-mode-line-active))))
        `(mode-line-inactive ((,c :box (:line-width (-1 . 4) :color ,bg-mode-line-inactive)))))))
   (add-hook 'modus-themes-post-load-hook #'my/modus-themes-custom-faces)
-  (modus-themes-select 'modus-operandi))
+  (modus-themes-select 'modus-vivendi))
 
 (global-prettify-symbols-mode)
 
@@ -281,14 +279,14 @@ This function is added to the `ef-themes-post-load-hook'."
 
 ; Backup directory
 (setq backup-directory-alist `((".*" . ,(expand-file-name "backups" user-emacs-directory)))
+      auto-save-file-name-transforms `((".*" ,(expand-file-name "backups" user-emacs-directory) t))
+      create-lockfiles nil
       backup-by-copying t
       version-control t
       delete-old-versions t
       vc-make-backup-files t
       kept-old-versions 10
       kept-new-versions 10)
-
-(setq create-lockfiles nil)
 
 (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
 
@@ -438,6 +436,9 @@ This function is added to the `ef-themes-post-load-hook'."
     "pf" '(project-find-file :which-key "Project find file")
     "qK" '(save-buffers-kill-emacs :which-key "Apps")))
 
+(setup (:pkg evil-surround)
+  (global-evil-surround-mode))
+
 ;; TODO: Mode this to another section
 ;; (setq-default fill-column 80)
 
@@ -465,9 +466,9 @@ This function is added to the `ef-themes-post-load-hook'."
         org-capture-bookmark nil)
 
   (require 'ox-latex)
-  ;; (add-to-list 'org-latex-packages-alist '("" "minted"))
+  (add-to-list 'org-latex-packages-alist '("" "minted"))
 
-  ;; (setq org-latex-listings 'minted)
+  (setq org-latex-listings 'minted)
 
   (setq org-latex-pdf-process
         '("pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"
@@ -553,21 +554,23 @@ This function is added to the `ef-themes-post-load-hook'."
 
 (defun +my-modeline/show-persp ()
   (when (featurep 'persp-mode)
-    (let ((persp-names (remove "none" (mapcar #'safe-persp-name (persp-persps))))
-          (current-persp (safe-persp-name (get-current-persp)))
-          (formatted '()))
+    (let* ((persp-names (remove "none" (mapcar #'safe-persp-name (persp-persps))))
+           (format-name (lambda (name idx) (concat (int-to-string idx) " " name)))
+           (current-persp (safe-persp-name (get-current-persp)))
+           (idx (length persp-names))
+           (formatted '()))
       (dolist (name persp-names)
         (setq formatted (append formatted
                                 (list
                                  (when (not (string-equal name (car persp-names)))
                                    " ")
                                  (if (string-equal name current-persp)
-                                     (propertize name 'face '(:inherit font-lock-comment-face))
-                                   name)))))
+                                     (propertize (funcall format-name name idx) 'face '(:inherit font-lock-keyword-face))
+                                   (funcall format-name name idx))))
+              idx (- idx 1)))
       (add-to-list 'formatted "[" t)
       (add-to-list 'formatted "]")
       (reverse formatted))))
-
 
 (setq-default
  mode-line-format
@@ -1034,6 +1037,12 @@ folder, otherwise delete a word"
 
 (setup (:pkg lua-mode))
 
+(setup (:pkg haskell-mode))
+
+(setup (:pkg scala-mode))
+
+(setup (:pkg go-mode))
+
 (setup (:pkg emms)
   (:leader
     "o"  '(:ignore t :which-key "Open")
@@ -1164,8 +1173,12 @@ folder, otherwise delete a word"
 
 (setup (:pkg eglot)
   (:ignore-buffers "^\\*EGLOT .*")
+  (:local-leader
+    "c" '(nil :which-key "Eglot")
+    "cc" '(eglot-code-actions :which-key "Code Actions")
+    "cr" '(eglot-rename :which-key "Rename"))
   (:option eglot-confirm-server-initiated-edits nil)
-  (:with-mode (clojure-mode clojurescript-mode go-mode)
+  (:with-mode (clojure-mode clojurescript-mode)
     (:hook #'eglot-ensure))
   (:with-mode eglot-managed-mode
     (:hook (lambda ()
@@ -1177,12 +1190,26 @@ folder, otherwise delete a word"
                  (add-to-list 'completion-at-point-functions #'eglot-completion-at-point t)
                  (add-to-list 'completion-at-point-functions t t)))))))
 
+;; (setup (:pkg lsp-mode)
+;;   (:option
+;;    ;; lsp-disabled-clients '(semgrep-ls)
+;;    ;; lsp-go-server-wrapper-function #'identity
+;;    lsp-go-server-path "gopls")
+;;   (:with-mode (go-mode)
+;;     (:hook #'lsp-deferred)))
+
+;; (lsp-go--server-command)
+
 (setup (:pkg sideline)
   (:option sideline-backends-right '(sideline-flymake))
   (:hook-into flymake-mode))
 
 (setup (:pkg sideline-flymake)
   (:option sideline-flymake-display-mode 'line))
+
+(setup (:pkg yasnippet)
+  (:with-mode (prog-mode)
+    (:hook #'yas-minor-mode)))
 
 (setup (:pkg eshell-toggle)
   (:leader

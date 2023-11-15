@@ -152,11 +152,11 @@
 #+begin_src emacs-lisp
   (defun my/filter-straight-recipe (recipe)
       (let* ((plist (cdr recipe))
-	  (name (plist-get plist :straight)))
+          (name (plist-get plist :straight)))
       (cons (if (and name (not (equal name t)))
-		  name
-	      (car recipe))
-	      (plist-put plist :straight nil))))
+        	  name
+              (car recipe))
+              (plist-put plist :straight nil))))
 
   (setup-define :pkg
       (lambda (&rest recipe)
@@ -347,20 +347,17 @@ hides minor modes from modeline
 
   (setup (:pkg modus-themes)
     (:require modus-themes)
-    (:option modus-themes-common-palette-overrides modus-themes-preset-overrides-intense
+    (:option modus-themes-common-palette-overrides modus-themes-preset-overrides-faint
              modus-themes-italic-constructs t
              modus-themes-org-blocks 'gray-background)
     (defun my/modus-themes-custom-faces ()
-      "My customizations on top of the Ef themes.
-  This function is added to the `ef-themes-post-load-hook'."
       (modus-themes-with-colors
         (custom-set-faces
          `(fill-column-indicator ((,c :height 1.0 :background ,bg-inactive :foreground ,bg-inactive)))
          `(mode-line ((,c :box (:line-width (-1 . 4) :color ,bg-mode-line-active))))
          `(mode-line-inactive ((,c :box (:line-width (-1 . 4) :color ,bg-mode-line-inactive)))))))
     (add-hook 'modus-themes-post-load-hook #'my/modus-themes-custom-faces)
-    (modus-themes-select 'modus-operandi))
-
+    (modus-themes-select 'modus-vivendi))
 #+end_src
 
 ** Pretify symbols
@@ -389,14 +386,14 @@ hides minor modes from modeline
 
   ; Backup directory
   (setq backup-directory-alist `((".*" . ,(expand-file-name "backups" user-emacs-directory)))
+        auto-save-file-name-transforms `((".*" ,(expand-file-name "backups" user-emacs-directory) t))
+        create-lockfiles nil
         backup-by-copying t
         version-control t
         delete-old-versions t
         vc-make-backup-files t
         kept-old-versions 10
         kept-new-versions 10)
-
-  (setq create-lockfiles nil)
 #+end_src
 
 * Bindings
@@ -574,6 +571,11 @@ hides minor modes from modeline
       "qK" '(save-buffers-kill-emacs :which-key "Apps")))
 #+end_src
 
+** Surround
+#+begin_src emacs-lisp
+  (setup (:pkg evil-surround)
+    (global-evil-surround-mode))
+#+end_src
 * Org
 
 #+begin_src emacs-lisp
@@ -604,9 +606,9 @@ hides minor modes from modeline
           org-capture-bookmark nil)
 
     (require 'ox-latex)
-    ;; (add-to-list 'org-latex-packages-alist '("" "minted"))
+    (add-to-list 'org-latex-packages-alist '("" "minted"))
 
-    ;; (setq org-latex-listings 'minted)
+    (setq org-latex-listings 'minted)
 
     (setq org-latex-pdf-process
           '("pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"
@@ -713,21 +715,23 @@ hides minor modes from modeline
 
   (defun +my-modeline/show-persp ()
     (when (featurep 'persp-mode)
-      (let ((persp-names (remove "none" (mapcar #'safe-persp-name (persp-persps))))
-            (current-persp (safe-persp-name (get-current-persp)))
-            (formatted '()))
+      (let* ((persp-names (remove "none" (mapcar #'safe-persp-name (persp-persps))))
+             (format-name (lambda (name idx) (concat (int-to-string idx) " " name)))
+             (current-persp (safe-persp-name (get-current-persp)))
+             (idx (length persp-names))
+             (formatted '()))
         (dolist (name persp-names)
           (setq formatted (append formatted
                                   (list
                                    (when (not (string-equal name (car persp-names)))
                                      " ")
                                    (if (string-equal name current-persp)
-                                       (propertize name 'face '(:inherit font-lock-comment-face))
-                                     name)))))
+                                       (propertize (funcall format-name name idx) 'face '(:inherit font-lock-keyword-face))
+                                     (funcall format-name name idx))))
+                idx (- idx 1)))
         (add-to-list 'formatted "[" t)
         (add-to-list 'formatted "]")
         (reverse formatted))))
-
 
   (setq-default
    mode-line-format
@@ -1227,7 +1231,6 @@ hides minor modes from modeline
 #+end_src
 
 * Languages
-
 ** Clojure
 #+begin_src emacs-lisp
   (setup (:pkg cider)
@@ -1294,6 +1297,21 @@ hides minor modes from modeline
   (setup (:pkg lua-mode))
 #+end_src
 
+** Haskell
+
+#+begin_src emacs-lisp
+  (setup (:pkg haskell-mode))
+#+end_src
+** Scala
+
+#+begin_src emacs-lisp
+    (setup (:pkg scala-mode))
+#+end_src
+** Go
+
+#+begin_src emacs-lisp
+  (setup (:pkg go-mode))
+#+end_src
 
 * Programs
 
@@ -1437,15 +1455,18 @@ hides minor modes from modeline
       "o r" '(restclient-buffer :which-key "Open restclient buffer")))
 #+end_src
 
-
 * LSP
 ** Eglot
 
 #+begin_src emacs-lisp
   (setup (:pkg eglot)
     (:ignore-buffers "^\\*EGLOT .*")
+    (:local-leader
+      "c" '(nil :which-key "Eglot")
+      "cc" '(eglot-code-actions :which-key "Code Actions")
+      "cr" '(eglot-rename :which-key "Rename"))
     (:option eglot-confirm-server-initiated-edits nil)
-    (:with-mode (clojure-mode clojurescript-mode go-mode)
+    (:with-mode (clojure-mode clojurescript-mode)
       (:hook #'eglot-ensure))
     (:with-mode eglot-managed-mode
       (:hook (lambda ()
@@ -1457,6 +1478,21 @@ hides minor modes from modeline
                    (add-to-list 'completion-at-point-functions #'eglot-completion-at-point t)
                    (add-to-list 'completion-at-point-functions t t)))))))
 #+end_src
+
+** lsp-mode
+
+#+begin_src emacs-lisp
+  ;; (setup (:pkg lsp-mode)
+  ;;   (:option
+  ;;    ;; lsp-disabled-clients '(semgrep-ls)
+  ;;    ;; lsp-go-server-wrapper-function #'identity
+  ;;    lsp-go-server-path "gopls")
+  ;;   (:with-mode (go-mode)
+  ;;     (:hook #'lsp-deferred)))
+
+  ;; (lsp-go--server-command)
+#+end_src
+
 ** Sideline
 
 #+begin_src emacs-lisp
@@ -1466,6 +1502,14 @@ hides minor modes from modeline
 
   (setup (:pkg sideline-flymake)
     (:option sideline-flymake-display-mode 'line))
+#+end_src
+
+** YasNippets
+
+#+begin_src emacs-lisp
+  (setup (:pkg yasnippet)
+    (:with-mode (prog-mode)
+      (:hook #'yas-minor-mode)))
 #+end_src
 
 * Eshell
