@@ -134,6 +134,20 @@ If PATH does not exist, abort the evaluation."
     `(add-to-list 'display-buffer-alist '(,condition . ,actions)))
   :documentation "Add to display buffer alist")
 
+(defun open-emms-window ()
+  (+workspace-switch "music" 't)
+  (emms-smart-browse))
+
+(defun print-colors ()
+  (let ((colors '(black red green yellow blue magenta cyan white)))
+    (mapcar #'message
+            (mapcar (lambda (color)
+                      (format "%s = \"%s\" | \"%s\""
+                              color
+                              (face-foreground (intern (format "ansi-color-%s" color)))
+                              (face-foreground (intern (format "ansi-color-bright-%s" color)))))
+                    colors))))
+
 (setq inhibit-startup-message t)
 (scroll-bar-mode -1)
 (tool-bar-mode -1)
@@ -178,7 +192,7 @@ If PATH does not exist, abort the evaluation."
                 prog-mode-hook
                 conf-mode-hook))
   (add-hook mode (lambda ()
-                   (setq display-line-numbers-width-start t)
+                   ;; (setq display-line-numbers-width-start t)
                    ;; (setq display-line-numbers-width 1)
                    (display-line-numbers-mode 1))))
 
@@ -215,50 +229,61 @@ If PATH does not exist, abort the evaluation."
   (:leader
     "o r" '(rainbow-mode :which-key "Toggle rainbow mode")))
 
+(setq org-agenda-files '("~/doc/agenda.org"))
+
 (defvar my-font)
+(defvar big-font-size)
+(defvar big-font--last-size)
+
+(setq my-font (font-spec :family "GoMono Nerd Font"))
 
 (if (string= (system-name) "intus")
-    (setq my-font "GoMono Nerd Font:pixelsize=14")
-  (setq my-font "GoMono Nerd Font:size=20"))
+    (progn
+      (font-put my-font :size 14)
+      (setq big-font-size 18))
+  (progn
+    (font-put my-font :size 20)
+    (setq big-font-size 25)))
 
-(defun my/set-font-faces ()
+(defun my/set-font-faces (font)
   (if window-system
-      (let* ((main-font my-font)
+      (let* ((main-font font)
              (fallback "monospace")
-             (font (if (x-list-fonts main-font) main-font fallback)))
-        (set-face-attribute 'default nil :font font)
-        (set-face-attribute 'fixed-pitch nil :font font))))
+             (font (if (list-fonts main-font) main-font fallback)))
+        (set-frame-font font nil t))))
 
 (if (daemonp)
     (add-hook 'after-make-frame-functions
               (lambda (frame)
-                (with-selected-frame frame (my/set-font-faces))))
-  (my/set-font-faces))
+                (with-selected-frame frame (my/set-font-faces my-font))))
+  (my/set-font-faces my-font))
 
-;; (setup (:pkg ef-themes)
-;;   (defun my/ef-themes-custom-faces ()
-;;     "My customizations on top of the Ef themes.
-;; This function is added to the `ef-themes-post-load-hook'."
-;;     (ef-themes-with-colors
-;;       (custom-set-faces
-;;        `(mode-line ((,c :box (:line-width (-1 . 4) :color ,bg-mode-line))))
-;;        `(mode-line-inactive ((,c :box (:line-width (-1 . 4) :color ,bg-tab-bar)))))))
-;;   (add-hook 'ef-themes-post-load-hook #'my/ef-themes-custom-faces)
-;;   (ef-themes-select 'ef-winter))
+(define-minor-mode big-font-mode
+  nil
+  :global t
+  (if big-font-mode
+      (progn
+        (setq big-font--last-size (font-get my-font :size))
+        (font-put my-font :size big-font-size)
+        (my/set-font-faces my-font))
+    (progn
+      (font-put my-font :size big-font--last-size)
+      (setq big-font--last-size nil)
+      (my/set-font-faces my-font))))
 
-(setup (:pkg modus-themes)
-  (:require modus-themes)
-  (:option modus-themes-common-palette-overrides modus-themes-preset-overrides-faint
-           modus-themes-italic-constructs t
-           modus-themes-org-blocks 'gray-background)
-  (defun my/modus-themes-custom-faces ()
-    (modus-themes-with-colors
-      (custom-set-faces
-       `(fill-column-indicator ((,c :height 1.0 :background ,bg-inactive :foreground ,bg-inactive)))
-       `(mode-line ((,c :box (:line-width (-1 . 4) :color ,bg-mode-line-active))))
-       `(mode-line-inactive ((,c :box (:line-width (-1 . 4) :color ,bg-mode-line-inactive)))))))
-  (add-hook 'modus-themes-post-load-hook #'my/modus-themes-custom-faces)
-  (modus-themes-select 'modus-vivendi))
+;; (setup (:pkg modus-themes)
+;;   (:require modus-themes)
+;;   (:option
+;;    modus-themes-common-palette-overrides `((cursor fg-main)
+;;                                            (bg-hover-secondary unspecified)
+;;                                            ,@modus-themes-preset-overrides-intense)
+;;    modus-themes-italic-constructs t
+;;    modus-themes-org-blocks 'gray-background)
+;;   (modus-themes-select 'modus-operandi-tinted))
+
+(setup (:pkg ef-themes)
+  (:require ef-themes)
+  (ef-themes-select 'ef-winter))
 
 (global-prettify-symbols-mode)
 
@@ -653,7 +678,7 @@ If PATH does not exist, abort the evaluation."
     "M-8" (lambda () (interactive) (+workspace-switch-by-index 7))
     "M-9" (lambda () (interactive) (+workspace-switch-by-index 8))
     "M-0" (lambda () (interactive) (+workspace-switch-by-index nil)))
-  (:hook-into window-setup-hook)
+  (:hook-into emacs-startup-hook)
   (:option persp-autokill-buffer-on-remove 'kill-weak
            persp-reset-windows-on-nil-window-conf nil
            persp-nil-hidden t
@@ -990,8 +1015,10 @@ folder, otherwise delete a word"
   (:ignore-buffers "\\*cider-repl.*" "\\*nrepl-server .*")
   (:display-rule "\\*cider-repl.*"
                  (display-buffer-in-side-window)
-                 (dedicated . t)
-                 (window-height  . 0.20))
+                 ;; (dedicated . t)
+                 (window-height  . 0.20)
+                 ;; (window-parameters (no-other-window . t))
+                 )
   (:with-map clojure-mode-map
     (:local-leader
       "e" '(nil :which-key "Eval")
@@ -1042,6 +1069,10 @@ folder, otherwise delete a word"
 (setup (:pkg scala-mode))
 
 (setup (:pkg go-mode))
+
+(setup (:pkg fennel-mode))
+
+(setup (:pkg moonscript))
 
 (setup (:pkg emms)
   (:leader
@@ -1129,6 +1160,7 @@ folder, otherwise delete a word"
 
 (setup (:pkg magit)
   (:option magit-display-buffer-function #'my/magit-buffer-function)
+  (:option transient-display-buffer-action '(display-buffer-below-selected))
   (:ignore-buffers "^magit: .*")
   (:leader
     "g" '(:ignore t :which-key "Git")
@@ -1178,7 +1210,7 @@ folder, otherwise delete a word"
     "cc" '(eglot-code-actions :which-key "Code Actions")
     "cr" '(eglot-rename :which-key "Rename"))
   (:option eglot-confirm-server-initiated-edits nil)
-  (:with-mode (clojure-mode clojurescript-mode)
+  (:with-mode (clojure-mode clojurescript-mode go-mode scala-mode c-mode)
     (:hook #'eglot-ensure))
   (:with-mode eglot-managed-mode
     (:hook (lambda ()
