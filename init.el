@@ -135,7 +135,7 @@ If PATH does not exist, abort the evaluation."
   :documentation "Add to display buffer alist")
 
 (defun open-emms-window ()
-  (+workspace-switch "music" 't)
+  (persp-switch "music")
   (emms-smart-browse))
 
 (defun print-colors ()
@@ -147,6 +147,9 @@ If PATH does not exist, abort the evaluation."
                               (face-foreground (intern (format "ansi-color-%s" color)))
                               (face-foreground (intern (format "ansi-color-bright-%s" color)))))
                     colors))))
+
+(let ((default-directory (concat (file-name-directory user-init-file) "lisp")))
+  (normal-top-level-add-subdirs-to-load-path))
 
 (setq inhibit-startup-message t)
 (scroll-bar-mode -1)
@@ -173,7 +176,13 @@ If PATH does not exist, abort the evaluation."
 ;;   )
 
 (setup (:pkg diff-hl)
+  (add-hook 'magit-pre-refresh-hook 'diff-hl-magit-pre-refresh)
+  (add-hook 'magit-post-refresh-hook 'diff-hl-magit-post-refresh)
   (global-diff-hl-mode))
+;; (use-package git-gutter)
+
+;; (setup (:pkg git-gutter)
+;;   (global-git-gutter-mode))
 
 (setq mouse-wheel-scroll-amount '(1 ((shift) . 1)))
 (setq mouse-wheel-progressive-speed nil)
@@ -219,7 +228,11 @@ If PATH does not exist, abort the evaluation."
                                               evil-window-up
                                               evil-window-left
                                               evil-window-right
-                                              evil-window-next))))
+                                              evil-window-next
+                                              evil-jump-backward
+                                              evil-jump-forward))))
+  (add-hook 'minibuffer-setup-hook #'pulsar-pulse-line)
+  (advice-add 'my/switch-buffer :after (lambda (&rest _) (pulsar-pulse-line)))
   (:load-after consult
     (add-hook 'consult-after-jump-hook #'pulsar-recenter-top)
     (add-hook 'consult-after-jump-hook #'pulsar-reveal-entry))
@@ -229,7 +242,26 @@ If PATH does not exist, abort the evaluation."
   (:leader
     "o r" '(rainbow-mode :which-key "Toggle rainbow mode")))
 
-(setq org-agenda-files '("~/doc/agenda.org"))
+(defvar nextcloud-password)
+(defvar nextcloud-user)
+(defvar nextcloud-remote-path)
+(defvar nextcloud-local-path)
+(defvar nextcloud-url)
+
+(defun sync-nextcloud ()
+  (interactive)
+  (let ((command (format "nextcloudcmd --password \"%s\" --user \"%s\" --path \"%s\" \"%s\" \"%s\""
+                         nextcloud-password
+                         nextcloud-user
+                         nextcloud-remote-path
+                         nextcloud-local-path
+                         nextcloud-url)))
+    (save-window-excursion
+      (shell-command command))
+    (message "sync done")
+    (revert-buffer :ignore-auto :noconfirm)))
+
+(setq org-agenda-files '("~/doc/agendas/agenda.org"))
 
 (defvar my-font)
 (defvar big-font-size)
@@ -271,19 +303,19 @@ If PATH does not exist, abort the evaluation."
       (setq big-font--last-size nil)
       (my/set-font-faces my-font))))
 
-;; (setup (:pkg modus-themes)
-;;   (:require modus-themes)
-;;   (:option
-;;    modus-themes-common-palette-overrides `((cursor fg-main)
-;;                                            (bg-hover-secondary unspecified)
-;;                                            ,@modus-themes-preset-overrides-intense)
-;;    modus-themes-italic-constructs t
-;;    modus-themes-org-blocks 'gray-background)
-;;   (modus-themes-select 'modus-operandi-tinted))
+(setup (:pkg modus-themes :type git :host github :repo "protesilaos/modus-themes")
+  (:require modus-themes)
+  (:option
+   modus-themes-common-palette-overrides `((cursor fg-main)
+                                           (bg-hover-secondary unspecified)
+                                           ,@modus-themes-preset-overrides-intense)
+   modus-themes-italic-constructs t
+   modus-themes-org-blocks 'gray-background)
+  (modus-themes-select 'modus-vivendi-tinted))
 
-(setup (:pkg ef-themes)
-  (:require ef-themes)
-  (ef-themes-select 'ef-winter))
+;; (setup (:pkg ef-themes)
+;;   (:require ef-themes)
+;;   (ef-themes-select 'ef-winter))
 
 (global-prettify-symbols-mode)
 
@@ -432,6 +464,11 @@ If PATH does not exist, abort the evaluation."
   (evil-goggles-mode)
   (evil-goggles-use-diff-faces))
 
+(setup (:pkg evil-anzu)
+  (:load-after evil
+    (global-anzu-mode 1)
+    (require 'evil-anzu)))
+
 (setup (:pkg which-key)
   (diminish 'which-key-mode)
   (which-key-mode)
@@ -478,6 +515,15 @@ If PATH does not exist, abort the evaluation."
 (setup (:pkg org)
   (:also-load org-tempo)
   (:hook my/org-mode-setup)
+  (:local-leader
+    "t" '(org-todo  :which-key "Mark todo")
+    "T" '(org-todo-list  :which-key "Todo List")
+    "x" '(org-toggle-checkbox :which-key "Toggle Checkbox")
+    "d" '(nil :which-key "Dates")
+    "dd" '(org-deadline :which-key "org-deadline")
+    "ds" '(org-schedule :which-key "org-schedule")
+    "dt" '(org-time-stamp :which-key "org-timestamp")
+    "dT" '(org-time-stamp-inactive :which-key "org-timestamp"))
   (setq org-ellipsis " ▾"
         org-hide-emphasis-markers t
         org-src-fontify-natively t
@@ -597,221 +643,131 @@ If PATH does not exist, abort the evaluation."
       (add-to-list 'formatted "]")
       (reverse formatted))))
 
-(setq-default
- mode-line-format
- (list
-  '(:eval
-    (+my-mode-line/format
-     (list
-      evil-mode-line-tag
-      '(:propertize "%e " face warning)
-      `(:propertize "%b " face mode-line-emphasis help-echo ,(buffer-file-name))
-      "[%+] "
-      mode-line-position)
-     (list
-      '(:eval (+my-modeline/show-persp))
-      " "
-      `(:propertize
-        "menu"
-        mouse-face mode-line-highlight
-        local-map ,(make-mode-line-mouse-map 'mouse-1 'minions-minor-modes-menu))
-      '(:eval (when (and (featurep 'flymake) flymake-mode) flymake-mode-line-format))
-      '(:eval (+my-mode-line/get-current-git-branch))
-      " "
-      mode-name
-      " ")))))
+;; (setq-default
+;;  mode-line-format
+;;  (list
+;;   '(:eval
+;;     (+my-mode-line/format
+;;      (list
+;;       evil-mode-line-tag
+;;       '(:propertize "%e " face warning)
+;;       `(:propertize "%b " face mode-line-emphasis help-echo ,(buffer-file-name))
+;;       "[%+] "
+;;       mode-line-position)
+;;      (list
+;;       '(:eval (+my-modeline/show-persp))
+;;       " "
+;;       `(:propertize
+;;         "menu"
+;;         mouse-face mode-line-highlight
+;;         local-map ,(make-mode-line-mouse-map 'mouse-1 'minions-minor-modes-menu))
+;;       '(:eval (when (and (featurep 'flymake) flymake-mode) flymake-mode-line-format))
+;;       '(:eval (+my-mode-line/get-current-git-branch))
+;;       " "
+;;       mode-name
+;;       " ")))))
 
-;; (setup (:pkg nerd-icons))
+(setup (:pkg nerd-icons))
 
-;; (setup (:pkg minions)
-;;   (:hook-into doom-modeline-mode))
+(setup (:pkg minions)
+  (:hook-into doom-modeline-mode))
 
-;; (setup (:pkg doom-modeline)
-;;   (:hook-into after-init-hook)
-;;   (:option doom-modeline-height 33
-;;            doom-modeline-bar-width 6
-;;            doom-modeline-lsp t
-;;            doom-modeline-github nil
-;;            doom-modeline-mu4e nil
-;;            ;; doom-modeline-irc t
-;;            doom-modeline-buffer-state-icon nil
-;;            doom-modeline-minor-modes t
-;;            doom-modeline-modal-icon nil
-;;            doom-modeline-persp-name t
-;;            doom-modeline-buffer-file-name-style 'truncate-except-project
-;;            doom-modeline-major-mode-icon nil)
-;;   (:load-after evil
-;;     (setq evil-normal-state-tag ""
-;;           evil-emacs-state-tag ""
-;;           evil-insert-state-tag ""
-;;           evil-motion-state-tag ""
-;;           evil-visual-state-tag ""
-;;           evil-operator-state-tag ""))
-;;   (add-hook 'server-switch-hook #'force-mode-line-update))
+(setup (:pkg doom-modeline)
+  ;; (:hook-into after-init-hook)
+  (:option doom-modeline-height 35
+           doom-modeline-lsp t
+           doom-modeline-github nil
+           doom-modeline-mu4e nil
+           ;; doom-modeline-irc t
+           doom-modeline-minor-modes t
+           doom-modeline-modal-icon nil
+           doom-modeline-persp-name t
+           doom-modeline-buffer-file-name-style 'truncate-except-project)
 
-;; (setup (:pkg moody)
-;;   ;; (mood-line-mode)
-;;   ;; (:hook-into after-init-hook)
-;;   )
+  (:load-after doom-modeline
+    (doom-modeline-def-segment show-persp
+      (when (featurep 'persp-mode)
+        (let* ((persp-names (remove "none" (mapcar #'safe-persp-name (persp-persps))))
+               (format-name (lambda (name idx) (concat (int-to-string idx) " " name)))
+               (current-persp (safe-persp-name (get-current-persp)))
+               (idx (length persp-names))
+               (formatted '()))
+          (dolist (name persp-names)
+            (setq formatted (append formatted
+                                    (list
+                                     (when (not (string-equal name (car persp-names)))
+                                       " ")
+                                     (if (string-equal name current-persp)
+                                         (propertize (funcall format-name name idx) 'face '(:inherit font-lock-keyword-face))
+                                       (funcall format-name name idx))))
+                  idx (- idx 1)))
+          (add-to-list 'formatted " [" t)
+          (add-to-list 'formatted "] ")
+          (reverse formatted))))
 
-(defvar +my/main-workspace "main")
-(defvar +workspace--old-uniquify-style nil)
+    (doom-modeline-def-modeline 'my-simple-line
+      '(bar modals matches buffer-info remote-host parrot selection-info)
+      '(show-persp misc-info minor-modes input-method buffer-encoding major-mode process vcs checker)))
+
+  (add-hook 'doom-modeline-mode-hook
+            (lambda ()
+              (doom-modeline-set-modeline 'my-simple-line 'default)))
+
+
+  (doom-modeline-mode 1)
+
+  (:load-after evil
+    (setq evil-normal-state-tag ""
+          evil-emacs-state-tag ""
+          evil-insert-state-tag ""
+          evil-motion-state-tag ""
+          evil-visual-state-tag ""
+          evil-operator-state-tag ""))
+  (add-hook 'server-switch-hook #'force-mode-line-update))
 
 (setup (:pkg workgroups))
 
-;; Taken from doom
 (setup (:pkg persp-mode)
   (:leader
     "bD" '(persp-kill-buffer :which-key "Kill buffer")
     "TAB" '(:ignore t :which-key "Perspective")
     "TAB n" '(persp-switch :which-key "Switch perspective")
+    "TAB k" '(persp-kill :which-key "Kill perspective")
     "TAB l" '(persp-next :which-key "Next perspective")
     "TAB h" '(persp-prev :which-key "Previous perspective"))
-  (:bind-into global-map
-    "M-1" (lambda () (interactive) (+workspace-switch-by-index 0))
-    "M-2" (lambda () (interactive) (+workspace-switch-by-index 1))
-    "M-3" (lambda () (interactive) (+workspace-switch-by-index 2))
-    "M-4" (lambda () (interactive) (+workspace-switch-by-index 3))
-    "M-5" (lambda () (interactive) (+workspace-switch-by-index 4))
-    "M-6" (lambda () (interactive) (+workspace-switch-by-index 5))
-    "M-7" (lambda () (interactive) (+workspace-switch-by-index 6))
-    "M-8" (lambda () (interactive) (+workspace-switch-by-index 7))
-    "M-9" (lambda () (interactive) (+workspace-switch-by-index 8))
-    "M-0" (lambda () (interactive) (+workspace-switch-by-index nil)))
-  (:hook-into emacs-startup-hook)
-  (:option persp-autokill-buffer-on-remove 'kill-weak
-           persp-reset-windows-on-nil-window-conf nil
-           persp-nil-hidden t
-           persp-auto-save-fname "autosave"
-           persp-save-dir (concat user-emacs-directory "workspaces/")
-           persp-set-last-persp-for-new-frames t
-           persp-switch-to-added-buffer nil
-           persp-kill-foreign-buffer-behaviour 'kill
-           persp-remove-buffers-from-nil-persp-behaviour nil
-           persp-auto-resume-time -1    ; Don't auto-load on startup
-           persp-auto-save-opt (if noninteractive 0 1))
+  (:leader
+    "TAB 1" (lambda () (interactive) (persp-switch-by-index 0))
+    "TAB 2" (lambda () (interactive) (persp-switch-by-index 1))
+    "TAB 3" (lambda () (interactive) (persp-switch-by-index 2))
+    "TAB 4" (lambda () (interactive) (persp-switch-by-index 3))
+    "TAB 5" (lambda () (interactive) (persp-switch-by-index 4))
+    "TAB 6" (lambda () (interactive) (persp-switch-by-index 5))
+    "TAB 7" (lambda () (interactive) (persp-switch-by-index 6))
+    "TAB 8" (lambda () (interactive) (persp-switch-by-index 7))
+    "TAB 9" (lambda () (interactive) (persp-switch-by-index 8))
+    "TAB 0" (lambda () (interactive) (persp-switch-by-index nil)))
+  ;; (:hook-into emacs-startup-hook)
+  (:load-after persp-mode-autoloads
+    ;; (setq wg-morph-on nil) ;; switch off animation
+    (setq persp-autokill-buffer-on-remove 'kill-weak)
+    (add-hook 'window-setup-hook #'(lambda () (persp-mode 1))))
 
-  (add-hook 'persp-before-deactivate-functions #'deactivate-mark)
-  (add-to-list 'window-persistent-parameters '(winner-ring . t))
-
-  (defun +workspace-current-name ()
-    "Get the name of the current workspace."
-    (safe-persp-name (get-current-persp)))
-
-  (defun +workspace-exists-p (name)
-    "Returns t if NAME is the name of an existing workspace."
-    (member name persp-names-cache))
-
-  (defun +workspace-new (name)
-    "Create a new workspace named NAME. If one already exists, return nil.
-Otherwise return t on success, nil otherwise."
-    (when (+workspace-exists-p name)
-      (error "A workspace named '%s' already exists" name))
-    (let ((persp (persp-add-new name))
-          (+popup--inhibit-transient t))
-      (save-window-excursion
-        (let ((ignore-window-parameters t)
-              (+popup--inhibit-transient t))
-          (persp-delete-other-windows))
-        (switch-to-buffer "*scratch*")
-        (setf
-         ;; persp-nil-wconf
-         (persp-window-conf persp)
-         (funcall persp-window-state-get-function (selected-frame))))
-      persp))
-
-  (defun +workspace-switch (name &optional auto-create-p)
-    "Switch to another workspace named NAME (a string).
-
-If AUTO-CREATE-P is non-nil, create the workspace if it doesn't exist, otherwise
-throws an error."
-    (unless (+workspace-exists-p name)
-      (if auto-create-p
-          (+workspace-new name)
-        (error "%s is not an available workspace" name)))
-    (let ((old-name (+workspace-current-name)))
-      (unless (equal old-name name)
-        (persp-frame-switch name))
-      (equal (+workspace-current-name) name)))
-
-  (defun +workspace-switch-by-index (index)
+  (defun persp-switch-by-index (index)
     "Switch to perspective by index, if the index is larger than the last perspecive or nil, switch to last perspective"
     (let* ((persps (reverse (butlast (persp-persps))))
            (selected (if index
                          (nth index persps)
                        (car (last persps)))))
       (if selected
-          (+workspace-switch (safe-persp-name selected))
-        (+workspace-switch (safe-persp-name (car (last persps)))))))
-
-  (defun +workspaces-associate-frame-fn (frame &optional _new-frame-p)
-    "Create a blank, new perspective and associate it with FRAME."
-    (when persp-mode
-      (if (not (persp-frame-list-without-daemon))
-          (+workspace-switch +my/main-workspace t)
-        (with-selected-frame frame
-          (+workspace-switch +my/main-workspace t)
-          (set-frame-parameter frame 'workspace (+workspace-current-name))
-          ;; ensure every buffer has a buffer-predicate
-          (persp-set-frame-buffer-predicate frame)))))
-
-  (setq persp-init-frame-behaviour t
-        persp-init-new-frame-behaviour-override nil
-        persp-interactive-init-frame-behaviour-override #'+workspaces-associate-frame-fn
-        persp-emacsclient-init-frame-behaviour-override #'+workspaces-associate-frame-fn)
-
-  (:with-hook (persp-mode-hook persp-after-load-state-functions)
-    (:hook (lambda ()
-             (when persp-mode
-               (dolist (frame (frame-list))
-                 (when (string= (safe-persp-name (get-current-persp frame)) persp-nil-name)
-                   ;; Take extra steps to ensure no frame ends up in the nil perspective
-                   (persp-frame-switch (or (cadr (hash-table-keys *persp-hash*))
-                                           +my/main-workspace)
-                                       frame)))))))
-  (:hook (lambda (&rest _)
-           (when persp-mode
-             (let (persp-before-switch-functions)
-               ;; Try our best to hide the nil perspective.
-               (when (equal (car persp-names-cache) persp-nil-name)
-                 (pop persp-names-cache))
-               ;; ...and create a *real* main workspace to fill this role.
-               (unless (or (persp-get-by-name +my/main-workspace)
-                           ;; Start from 2 b/c persp-mode counts the nil workspace
-                           (> (hash-table-count *persp-hash*) 2))
-                 (persp-add-new +my/main-workspace))
-               ;; HACK Fix #319: the warnings buffer gets swallowed when creating
-               ;;      `+workspaces-main', so display it ourselves, if it exists.
-               (when-let (warnings (get-buffer "*Warnings*"))
-                 (save-excursion
-                   (display-buffer-in-side-window
-                    warnings '((window-height . shrink-window-if-larger-than-buffer)))))))))
-  (:hook (lambda ()
-           (cond (persp-mode
-                  ;; `uniquify' breaks persp-mode. It renames old buffers, which causes
-                  ;; errors when switching between perspective (their buffers are
-                  ;; serialized by name and persp-mode expects them to have the same
-                  ;; name when restored).
-                  (when uniquify-buffer-name-style
-                    (setq +workspace--old-uniquify-style uniquify-buffer-name-style))
-                  (setq uniquify-buffer-name-style nil)
-                  ;; Ensure `persp-kill-buffer-query-function' is last
-                  (remove-hook 'kill-buffer-query-functions #'persp-kill-buffer-query-function)
-                  (add-hook 'kill-buffer-query-functions #'persp-kill-buffer-query-function t))
-                 (t
-                  (when +workspace--old-uniquify-style
-                    (setq uniquify-buffer-name-style +workspace--old-uniquify-style)))))))
+          (persp-switch (safe-persp-name selected))
+        (persp-switch (safe-persp-name (car (last persps))))))))
 
 (setq global-auto-revert-non-file-buffers t)
 
 (setup (:require paren)
   (show-paren-mode 1))
 
-;; (setup (:pkg aggressive-indent)
-;;   (:with-mode (prog-mode)
-;;     (:hook #'aggressive-indent-mode)))
-
-;; (add-hook 'prog-mode-hook #'electric-indent-mode)
+(add-hook 'prog-mode-hook #'electric-indent-mode)
 
 (setq tramp-default-method "ssh")
 
@@ -979,7 +935,7 @@ folder, otherwise delete a word"
 (setup (:pkg consult)
   (:require consult)
   (:leader
-    "SPC" '( my/switch-buffer :which-key "Buffers")
+    "SPC" '(my/switch-buffer :which-key "Buffers")
     "/" '(consult-ripgrep :which-key "Ripgrep")
     "bb" '(my/project-buffer :which-key "Project Buffers")
     "bB" '(consult-buffer :which-key "All Buffers"))
@@ -1069,8 +1025,6 @@ folder, otherwise delete a word"
 (setup (:pkg scala-mode))
 
 (setup (:pkg go-mode))
-
-(setup (:pkg fennel-mode))
 
 (setup (:pkg moonscript))
 
@@ -1202,6 +1156,16 @@ folder, otherwise delete a word"
     (restclient-mode))
   (:leader
     "o r" '(restclient-buffer :which-key "Open restclient buffer")))
+
+(setup (:pkg gptel)
+  (:option gptel-default-mode 'org-mode)
+  (require 'my-secrets nil 't)
+  (:load-after my-secrets
+    (:option
+     gptel-backend (gptel-make-gemini
+                    "Gemini"
+                    :key secrets-gemini-api-key
+                    :stream t))))
 
 (setup (:pkg eglot)
   (:ignore-buffers "^\\*EGLOT .*")
