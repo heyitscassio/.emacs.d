@@ -303,19 +303,19 @@ If PATH does not exist, abort the evaluation."
       (setq big-font--last-size nil)
       (my/set-font-faces my-font))))
 
-(setup (:pkg modus-themes :type git :host github :repo "protesilaos/modus-themes")
-  (:require modus-themes)
-  (:option
-   modus-themes-common-palette-overrides `((cursor fg-main)
-                                           (bg-hover-secondary unspecified)
-                                           ,@modus-themes-preset-overrides-intense)
-   modus-themes-italic-constructs t
-   modus-themes-org-blocks 'gray-background)
-  (modus-themes-select 'modus-vivendi-tinted))
+;; (setup (:pkg modus-themes :type git :host github :repo "protesilaos/modus-themes")
+;;   (:require modus-themes)
+;;   (:option
+;;    modus-themes-common-palette-overrides `((cursor fg-main)
+;;                                            (bg-hover-secondary unspecified)
+;;                                            ,@modus-themes-preset-overrides-intense)
+;;    modus-themes-italic-constructs t
+;;    modus-themes-org-blocks 'gray-background)
+;;   (modus-themes-select 'modus-vivendi-tinted))
 
-;; (setup (:pkg ef-themes)
-;;   (:require ef-themes)
-;;   (ef-themes-select 'ef-winter))
+(setup (:pkg ef-themes)
+  (:require ef-themes)
+  (ef-themes-select 'ef-winter))
 
 (global-prettify-symbols-mode)
 
@@ -352,7 +352,6 @@ If PATH does not exist, abort the evaluation."
   (global-undo-tree-mode 1))
 
 (setup (:pkg evil)
-  ;; Pre-load configuration
   (setq evil-want-integration t)
   (setq evil-want-keybinding nil)
   (setq evil-want-C-u-scroll t)
@@ -394,11 +393,6 @@ If PATH does not exist, abort the evaluation."
 
   (define-key evil-insert-state-map (kbd "C-g") 'evil-normal-state)
   (define-key evil-insert-state-map (kbd "C-h") 'evil-delete-backward-char-and-join)
-
-  ;; Use visual line motions even outside of visual-line-mode buffers
-  ;; (evil-global-set-key 'motion "j" 'evil-next-visual-line)
-  ;; (evil-global-set-key 'motion "k" 'evil-previous-visual-line)
-
   (evil-set-initial-state 'messages-buffer-mode 'normal)
   (evil-set-initial-state 'dashboard-mode 'normal))
 
@@ -408,8 +402,7 @@ If PATH does not exist, abort the evaluation."
 
 (setup (:pkg evil-goggles)
   (:when-loaded
-    (:option evil-goggles-pulse nil
-             evil-goggles-enable-delete t
+    (:option evil-goggles-enable-delete t
              evil-goggles-enable-change t
              evil-goggles--commands
              (append evil-goggles--commands
@@ -1027,6 +1020,9 @@ folder, otherwise delete a word"
 (setup (:pkg go-mode))
 
 (setup (:pkg moonscript))
+
+(setup (:pkg typescript-mode)
+  (:option typescript-indent-level 2))
 
 (setup (:pkg emms)
   (:leader

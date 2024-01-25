@@ -1,0 +1,3 @@
+[submodule "lisp/my-secrets"]
+	path = lisp/my-secrets
+	url = git@codeberg.org:heyitscassio/secrets.git
