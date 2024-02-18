@@ -163,7 +163,7 @@ If PATH does not exist, abort the evaluation."
 (setq help-window-select t)
 
 (setq display-buffer-alist
-      '(("\\*[Hh]elp\\*"
+      '(("\\*\\([Hh]elp\\|Messages\\)\\*"
          (display-buffer-in-side-window)
          (window-height . 0.25)
          (side . bottom)
@@ -250,7 +250,7 @@ If PATH does not exist, abort the evaluation."
 
 (defun sync-nextcloud ()
   (interactive)
-  (let ((command (format "nextcloudcmd --password \"%s\" --user \"%s\" --path \"%s\" \"%s\" \"%s\""
+  (let ((command (format "nextcloudcmd --password '%s' --user '%s' --path '%s' '%s' '%s'"
                          nextcloud-password
                          nextcloud-user
                          nextcloud-remote-path
@@ -303,19 +303,17 @@ If PATH does not exist, abort the evaluation."
       (setq big-font--last-size nil)
       (my/set-font-faces my-font))))
 
-;; (setup (:pkg modus-themes :type git :host github :repo "protesilaos/modus-themes")
-;;   (:require modus-themes)
-;;   (:option
-;;    modus-themes-common-palette-overrides `((cursor fg-main)
-;;                                            (bg-hover-secondary unspecified)
-;;                                            ,@modus-themes-preset-overrides-intense)
-;;    modus-themes-italic-constructs t
-;;    modus-themes-org-blocks 'gray-background)
-;;   (modus-themes-select 'modus-vivendi-tinted))
+(setup (:pkg modus-themes)
+  (:require modus-themes)
+  (:option
+   modus-themes-common-palette-overrides modus-themes-preset-overrides-intense
+   modus-themes-italic-constructs t
+   modus-themes-org-blocks 'gray-background)
+  (modus-themes-select 'modus-operandi-tinted))
 
-(setup (:pkg ef-themes)
-  (:require ef-themes)
-  (ef-themes-select 'ef-winter))
+;; (setup (:pkg ef-themes)
+;;   (:require ef-themes)
+;;   (ef-themes-select 'ef-winter))
 
 (global-prettify-symbols-mode)
 
@@ -361,12 +359,12 @@ If PATH does not exist, abort the evaluation."
   (setq evil-echo-state nil)
   (setq evil-auto-indent t)
 
-  (setq evil-normal-state-tag (propertize " " 'face 'font-lock-number-face)
-        evil-emacs-state-tag (propertize " " 'face 'font-lock-warning-face)
-        evil-insert-state-tag (propertize " " 'face 'font-lock-string-face)
-        evil-motion-state-tag (propertize " " 'face 'font-lock-constant-face)
-        evil-visual-state-tag (propertize " " 'face 'font-lock-escape-face)
-        evil-operator-state-tag (propertize " " 'face 'font-lock-function-name-face))
+  ;; (setq evil-normal-state-tag (propertize " " 'face 'font-lock-string-face)
+  ;;       evil-emacs-state-tag (propertize " " 'face 'font-lock-warning-face)
+  ;;       evil-insert-state-tag (propertize " " 'face 'font-lock-doc-markup-face)
+  ;;       evil-motion-state-tag (propertize " " 'face 'font-lock-constant-face)
+  ;;       evil-visual-state-tag (propertize " " 'face 'font-lock-escape-face)
+  ;;       evil-operator-state-tag (propertize " " 'face 'font-lock-function-name-face))
 
   (defun my/elisp-lookup ()
     (interactive)
@@ -459,6 +457,7 @@ If PATH does not exist, abort the evaluation."
 
 (setup (:pkg evil-anzu)
   (:load-after evil
+    (:option anzu-cons-mode-line-p nil)
     (global-anzu-mode 1)
     (require 'evil-anzu)))
 
@@ -586,55 +585,55 @@ If PATH does not exist, abort the evaluation."
 (setup (:pkg nyan-mode)
   (nyan-mode))
 
-(setq display-time-format "%l:%M %p %b %y"
-      display-time-default-load-average nil)
+;; (setq display-time-format "%l:%M %p %b %y"
+;;       display-time-default-load-average nil)
 
-(defun +my-mode-line/get-current-git-branch ()
-  (when vc-mode
-    (when-let* ((current-file (buffer-file-name)))
-      (list
-       " "
-       (vc-git--symbolic-ref current-file)))))
+;; (defun +my-mode-line/get-current-git-branch ()
+;;   (when vc-mode
+;;     (when-let* ((current-file (buffer-file-name)))
+;;       (list
+;;        " "
+;;        (vc-git--symbolic-ref current-file)))))
 
-(defun +my-mode-line/fill (reserve)
-  "Return empty space using FACE and leaving RESERVE space on the right."
-  (when
-    (and window-system (eq 'right (get-scroll-bar-mode)))
-    (setq reserve (- reserve 3)))
-  (propertize " "
-    'display
-    `((space :align-to (- (+ right right-fringe right-margin) ,reserve)))))
+;; (defun +my-mode-line/fill (reserve)
+;;   "Return empty space using FACE and leaving RESERVE space on the right."
+;;   (when
+;;     (and window-system (eq 'right (get-scroll-bar-mode)))
+;;     (setq reserve (- reserve 3)))
+;;   (propertize " "
+;;     'display
+;;     `((space :align-to (- (+ right right-fringe right-margin) ,reserve)))))
 
-(defun +my-mode-line/escape (str)
-  (replace-regexp-in-string "%" "%%" str))
+;; (defun +my-mode-line/escape (str)
+;;   (replace-regexp-in-string "%" "%%" str))
 
-(defun +my-mode-line/format (left right)
-  (let ((right-format (+my-mode-line/escape (format-mode-line right)))
-        (left-format (+my-mode-line/escape (format-mode-line left))))
-    (list
-     left-format
-     (+my-mode-line/fill (length right-format))
-     right-format)))
+;; (defun +my-mode-line/format (left right)
+;;   (let ((right-format (+my-mode-line/escape (format-mode-line right)))
+;;         (left-format (+my-mode-line/escape (format-mode-line left))))
+;;     (list
+;;      left-format
+;;      (+my-mode-line/fill (length right-format))
+;;      right-format)))
 
-(defun +my-modeline/show-persp ()
-  (when (featurep 'persp-mode)
-    (let* ((persp-names (remove "none" (mapcar #'safe-persp-name (persp-persps))))
-           (format-name (lambda (name idx) (concat (int-to-string idx) " " name)))
-           (current-persp (safe-persp-name (get-current-persp)))
-           (idx (length persp-names))
-           (formatted '()))
-      (dolist (name persp-names)
-        (setq formatted (append formatted
-                                (list
-                                 (when (not (string-equal name (car persp-names)))
-                                   " ")
-                                 (if (string-equal name current-persp)
-                                     (propertize (funcall format-name name idx) 'face '(:inherit font-lock-keyword-face))
-                                   (funcall format-name name idx))))
-              idx (- idx 1)))
-      (add-to-list 'formatted "[" t)
-      (add-to-list 'formatted "]")
-      (reverse formatted))))
+;; (defun +my-modeline/show-persp ()
+;;   (when (featurep 'persp-mode)
+;;     (let* ((persp-names (remove "none" (mapcar #'safe-persp-name (persp-persps))))
+;;            (format-name (lambda (name idx) (concat (int-to-string idx) " " name)))
+;;            (current-persp (safe-persp-name (get-current-persp)))
+;;            (idx (length persp-names))
+;;            (formatted '()))
+;;       (dolist (name persp-names)
+;;         (setq formatted (append formatted
+;;                                 (list
+;;                                  (when (not (string-equal name (car persp-names)))
+;;                                    " ")
+;;                                  (if (string-equal name current-persp)
+;;                                      (propertize (funcall format-name name idx) 'face '(:inherit font-lock-keyword-face))
+;;                                    (funcall format-name name idx))))
+;;               idx (- idx 1)))
+;;       (add-to-list 'formatted "[" t)
+;;       (add-to-list 'formatted "]")
+;;       (reverse formatted))))
 
 ;; (setq-default
 ;;  mode-line-format
@@ -645,7 +644,7 @@ If PATH does not exist, abort the evaluation."
 ;;       evil-mode-line-tag
 ;;       '(:propertize "%e " face warning)
 ;;       `(:propertize "%b " face mode-line-emphasis help-echo ,(buffer-file-name))
-;;       "[%+] "
+;;       "[%wl+] "
 ;;       mode-line-position)
 ;;      (list
 ;;       '(:eval (+my-modeline/show-persp))
@@ -660,65 +659,64 @@ If PATH does not exist, abort the evaluation."
 ;;       mode-name
 ;;       " ")))))
 
-(setup (:pkg nerd-icons))
+(setup (:require my-modeline)
+  (setq-default mode-line-format my-modeline-format))
 
 (setup (:pkg minions)
-  (:hook-into doom-modeline-mode))
+  (minions-mode 1))
 
-(setup (:pkg doom-modeline)
-  ;; (:hook-into after-init-hook)
-  (:option doom-modeline-height 35
-           doom-modeline-lsp t
-           doom-modeline-github nil
-           doom-modeline-mu4e nil
-           ;; doom-modeline-irc t
-           doom-modeline-minor-modes t
-           doom-modeline-modal-icon nil
-           doom-modeline-persp-name t
-           doom-modeline-buffer-file-name-style 'truncate-except-project)
+;; (setup (:pkg doom-modeline)
+;;   ;; (:hook-into after-init-hook)
+;;   (:option doom-modeline-height 35
+;;            doom-modeline-lsp t
+;;            doom-modeline-github nil
+;;            doom-modeline-mu4e nil
+;;            ;; doom-modeline-irc t
+;;            doom-modeline-minor-modes t
+;;            doom-modeline-modal-icon nil
+;;            doom-modeline-persp-name t
+;;            doom-modeline-buffer-file-name-style 'truncate-except-project)
 
-  (:load-after doom-modeline
-    (doom-modeline-def-segment show-persp
-      (when (featurep 'persp-mode)
-        (let* ((persp-names (remove "none" (mapcar #'safe-persp-name (persp-persps))))
-               (format-name (lambda (name idx) (concat (int-to-string idx) " " name)))
-               (current-persp (safe-persp-name (get-current-persp)))
-               (idx (length persp-names))
-               (formatted '()))
-          (dolist (name persp-names)
-            (setq formatted (append formatted
-                                    (list
-                                     (when (not (string-equal name (car persp-names)))
-                                       " ")
-                                     (if (string-equal name current-persp)
-                                         (propertize (funcall format-name name idx) 'face '(:inherit font-lock-keyword-face))
-                                       (funcall format-name name idx))))
-                  idx (- idx 1)))
-          (add-to-list 'formatted " [" t)
-          (add-to-list 'formatted "] ")
-          (reverse formatted))))
+;;   (:load-after doom-modeline
+;;     (doom-modeline-def-segment show-persp
+;;       (when (featurep 'persp-mode)
+;;         (let* ((persp-names (remove "none" (mapcar #'safe-persp-name (persp-persps))))
+;;                (format-name (lambda (name idx) (concat (int-to-string idx) " " name)))
+;;                (current-persp (safe-persp-name (get-current-persp)))
+;;                (idx (length persp-names))
+;;                (formatted '()))
+;;           (dolist (name persp-names)
+;;             (setq formatted (append formatted
+;;                                     (list
+;;                                      (when (not (string-equal name (car persp-names)))
+;;                                        " ")
+;;                                      (if (string-equal name current-persp)
+;;                                          (propertize (funcall format-name name idx) 'face '(:inherit font-lock-keyword-face))
+;;                                        (funcall format-name name idx))))
+;;                   idx (- idx 1)))
+;;           (add-to-list 'formatted " [" t)
+;;           (add-to-list 'formatted "] ")
+;;           (reverse formatted))))
 
-    (doom-modeline-def-modeline 'my-simple-line
-      '(bar modals matches buffer-info remote-host parrot selection-info)
-      '(show-persp misc-info minor-modes input-method buffer-encoding major-mode process vcs checker)))
+;;     (doom-modeline-def-modeline 'my-simple-line
+;;       '(bar modals matches buffer-info remote-host parrot selection-info)
+;;       '(show-persp misc-info minor-modes input-method buffer-encoding major-mode process vcs checker)))
 
-  (add-hook 'doom-modeline-mode-hook
-            (lambda ()
-              (doom-modeline-set-modeline 'my-simple-line 'default)))
+;;   (add-hook 'doom-modeline-mode-hook
+;;             (lambda ()
+;;               (doom-modeline-set-modeline 'my-simple-line 'default)))
 
 
-  (doom-modeline-mode 1)
+;;   (doom-modeline-mode 1)
 
-  (:load-after evil
-    (setq evil-normal-state-tag ""
-          evil-emacs-state-tag ""
-          evil-insert-state-tag ""
-          evil-motion-state-tag ""
-          evil-visual-state-tag ""
-          evil-operator-state-tag ""))
-  (add-hook 'server-switch-hook #'force-mode-line-update))
-
-(setup (:pkg workgroups))
+;;   (:load-after evil
+;;     (setq evil-normal-state-tag ""
+;;           evil-emacs-state-tag ""
+;;           evil-insert-state-tag ""
+;;           evil-motion-state-tag ""
+;;           evil-visual-state-tag ""
+;;           evil-operator-state-tag ""))
+;;   (add-hook 'server-switch-hook #'force-mode-line-update))
 
 (setup (:pkg persp-mode)
   (:leader
@@ -739,10 +737,8 @@ If PATH does not exist, abort the evaluation."
     "TAB 8" (lambda () (interactive) (persp-switch-by-index 7))
     "TAB 9" (lambda () (interactive) (persp-switch-by-index 8))
     "TAB 0" (lambda () (interactive) (persp-switch-by-index nil)))
-  ;; (:hook-into emacs-startup-hook)
   (:load-after persp-mode-autoloads
-    ;; (setq wg-morph-on nil) ;; switch off animation
-    (setq persp-autokill-buffer-on-remove 'kill-weak)
+    (setq persp-autokill-buffer-on-remove 'kill)
     (add-hook 'window-setup-hook #'(lambda () (persp-mode 1))))
 
   (defun persp-switch-by-index (index)
@@ -789,64 +785,7 @@ If PATH does not exist, abort the evaluation."
               clojure-mode
               fennel-mode)
   (:when-loaded
-    (lispy-set-key-theme '(lispy c-digits))
-  (define-minor-mode lispy-mode
-    "Minor mode for navigating and editing LISP dialects.
-
-When `lispy-mode' is on, most unprefixed keys,
-i.e. [a-zA-Z+-./<>], conditionally call commands instead of
-self-inserting. The condition (called special further on) is one
-of:
-
-- the point is before \"(\"
-- the point is after \")\"
-- the region is active
-
-For instance, when special, \"j\" moves down one sexp, otherwise
-it inserts itself.
-
-When special, [0-9] call `digit-argument'.
-
-When `lispy-mode' is on, \"[\" and \"]\" move forward and
-backward through lists, which is useful to move into special.
-
-\\{lispy-mode-map}"
-    :keymap lispy-mode-map
-    :group 'lispy
-    :lighter " LY"
-    (if lispy-mode
-        (progn
-          (require 'eldoc)
-          (eldoc-remove-command 'special-lispy-eval)
-          (eldoc-remove-command 'special-lispy-x)
-          (eldoc-add-command 'lispy-space)
-          (setq lispy-old-outline-settings
-                (cons outline-regexp outline-level))
-          (setq-local outline-level 'lispy-outline-level)
-          (cond ((eq major-mode 'latex-mode)
-                 (setq-local lispy-outline "^\\(?:%\\*+\\|\\\\\\(?:sub\\)?section{\\)")
-                 (setq lispy-outline-header "%")
-                 (setq-local outline-regexp "\\(?:%\\*+\\|\\\\\\(?:sub\\)?section{\\)"))
-                ((eq major-mode 'clojure-mode)
-                 (eval-after-load 'le-clojure
-                   '(add-hook 'completion-at-point-functions #'lispy-clojure-complete-at-point nil t))
-                 (setq-local outline-regexp (substring lispy-outline 1)))
-                ((eq major-mode 'python-mode)
-                 (setq-local lispy-outline "^#\\*+")
-                 (setq lispy-outline-header "#")
-                 (setq-local outline-regexp "#\\*+")
-                 (setq-local outline-heading-end-regexp "\n"))
-                (t
-                 (setq-local outline-regexp (substring lispy-outline 1))))
-          (when (called-interactively-p 'any)
-            (mapc #'lispy-raise-minor-mode
-                  (cons 'lispy-mode lispy-known-verbs)))
-          (font-lock-add-keywords major-mode lispy-font-lock-keywords))
-      (when lispy-old-outline-settings
-        (setq outline-regexp (car lispy-old-outline-settings))
-        (setq outline-level (cdr lispy-old-outline-settings))
-        (setq lispy-old-outline-settings nil))
-      (font-lock-remove-keywords major-mode lispy-font-lock-keywords)))))
+    (lispy-set-key-theme '(lispy c-digits))))
 
 (add-hook 'prog-mode-hook
           (lambda ()
@@ -898,15 +837,13 @@ folder, otherwise delete a word"
     (:bind "C-s" corfu-quit
            [tab] corfu-next
            [backtab] corfu-previous))
-  (:hook-into prog-mode-hook eshell-mode-hook)
   (:option corfu-cycle t
            corfu-auto t
            corfu-auto-delay 0.1
            corfu-auto-prefix 2
            corfu-quit-no-match nil
            corfu-preselect 'prompt)
-  (:load-from "straight/build/corfu/extensions")
-  (:require corfu-popupinfo)
+  (:hook-into prog-mode-hook eshell-mode-hook)
   (:hook #'corfu-popupinfo-mode)
   (defun corfu-enable-in-minibuffer ()
     "Enable Corfu in the minibuffer if `completion-at-point' is bound."
@@ -960,7 +897,8 @@ folder, otherwise delete a word"
   (:option cider-clojure-cli-global-options "-Adev"
            cider-repl-display-help-banner nil
            cider-eval-result-duration 'change
-           cider-repl-pop-to-buffer-on-connect 'display-only)
+           cider-repl-pop-to-buffer-on-connect 'display-only
+           cider-xref-fn-depth 90)
   (:ignore-buffers "\\*cider-repl.*" "\\*nrepl-server .*")
   (:display-rule "\\*cider-repl.*"
                  (display-buffer-in-side-window)
@@ -1203,8 +1141,15 @@ folder, otherwise delete a word"
   (:with-mode (prog-mode)
     (:hook #'yas-minor-mode)))
 
-(setup (:pkg eshell-toggle)
+;; (setup (:pkg eshell-toggle)
+;;   (:leader
+;;     "o o" '(eshell-toggle :which-key "Toggle Eshell"))
+;;   (:option eshell-toggle-size-fraction 3
+;;            eshell-toggle-run-command nil))
+
+(setup (:require my-eshell-toggle)
+  (:display-rule "\\*eshell - .*"
+                 (display-buffer-in-side-window)
+                 (window-height . 0.2))
   (:leader
-    "o o" '(eshell-toggle :which-key "Toggle Eshell"))
-  (:option eshell-toggle-size-fraction 3
-           eshell-toggle-run-command nil))
+    "o o" '(my-eshell-toggle :which-key "Toggle eshell")))
