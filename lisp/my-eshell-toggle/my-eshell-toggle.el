@@ -12,6 +12,9 @@
       (project-root (project-current))
     default-directory))
 
+(defvar default-directory)
+(defvar eshell-buffer-name)
+
 (defun my-eshell-toggle ()
   (interactive)
   (let ((default-directory (my-eshell--get-directory))

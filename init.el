@@ -267,7 +267,7 @@ If PATH does not exist, abort the evaluation."
 (defvar big-font-size)
 (defvar big-font--last-size)
 
-(setq my-font (font-spec :family "GoMono Nerd Font"))
+(setq my-font (font-spec :family "Go Mono Nerd Font"))
 
 (if (string= (system-name) "intus")
     (progn
@@ -309,7 +309,7 @@ If PATH does not exist, abort the evaluation."
    modus-themes-common-palette-overrides modus-themes-preset-overrides-intense
    modus-themes-italic-constructs t
    modus-themes-org-blocks 'gray-background)
-  (modus-themes-select 'modus-operandi-tinted))
+  (modus-themes-select 'modus-operandi))
 
 ;; (setup (:pkg ef-themes)
 ;;   (:require ef-themes)
@@ -394,7 +394,10 @@ If PATH does not exist, abort the evaluation."
   (evil-set-initial-state 'messages-buffer-mode 'normal)
   (evil-set-initial-state 'dashboard-mode 'normal))
 
-(setup (:pkg evil-collection)
+(setup (:pkg evil-collection
+             :host nil
+             :type git
+             :repo "git@github.com:toniz4/evil-collection.git")
   (:load-after evil
     (evil-collection-init)))
 
@@ -1124,11 +1127,9 @@ folder, otherwise delete a word"
 ;;   (:option
 ;;    ;; lsp-disabled-clients '(semgrep-ls)
 ;;    ;; lsp-go-server-wrapper-function #'identity
-;;    lsp-go-server-path "gopls")
-;;   (:with-mode (go-mode)
+;;    )
+;;   (:with-mode (go-mode clojure-mode)
 ;;     (:hook #'lsp-deferred)))
-
-;; (lsp-go--server-command)
 
 (setup (:pkg sideline)
   (:option sideline-backends-right '(sideline-flymake))
@@ -1152,4 +1153,16 @@ folder, otherwise delete a word"
                  (display-buffer-in-side-window)
                  (window-height . 0.2))
   (:leader
-    "o o" '(my-eshell-toggle :which-key "Toggle eshell")))
+    "o o" '(my-eshell-toggle :which-key "Toggle eshell"))
+
+  ;; (:with-map eshell-mode-map
+  ;;   (:bind (kbd "C-l") eshell-clear-buffer))
+
+  (defun eshell-clear-buffer ()
+    "Clear terminal"
+    (interactive)
+    (let ((inhibit-read-only t))
+      (erase-buffer)
+      (eshell-send-input))))
+
+
