@@ -140,9 +140,9 @@ If PATH does not exist, abort the evaluation."
 
 (defun print-colors ()
   (let ((colors '(black red green yellow blue magenta cyan white)))
-    (mapcar #'message
+    (mapc #'message
             (mapcar (lambda (color)
-                      (format "%s = \"%s\" | \"%s\""
+                      (format "%s = %s | %s\n"
                               color
                               (face-foreground (intern (format "ansi-color-%s" color)))
                               (face-foreground (intern (format "ansi-color-bright-%s" color)))))
@@ -309,7 +309,7 @@ If PATH does not exist, abort the evaluation."
    modus-themes-common-palette-overrides modus-themes-preset-overrides-intense
    modus-themes-italic-constructs t
    modus-themes-org-blocks 'gray-background)
-  (modus-themes-select 'modus-operandi))
+  (modus-themes-select 'modus-vivendi))
 
 ;; (setup (:pkg ef-themes)
 ;;   (:require ef-themes)
@@ -925,7 +925,8 @@ folder, otherwise delete a word"
   ;; Cider eval overlays in elisp
   (defun my/eval-overlay (value point)
     (cider--make-result-overlay (format "%S" value)
-      :where point)
+      :where point
+      :duration 'change)
     value)
 
   (advice-add 'eval-region :around
