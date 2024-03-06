@@ -1166,4 +1166,5 @@ folder, otherwise delete a word"
       (erase-buffer)
       (eshell-send-input))))
 
-
+(setup (:pkg jarchive)
+  (jarchive-setup))

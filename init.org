@@ -1506,7 +1506,10 @@ hides minor modes from modeline
         (eshell-send-input))))
 #+end_src
 
-* Gitlab mode
-#+begin_src emacs-lisp
+* Utils
+** jarchive
 
+#+begin_src emacs-lisp
+  (setup (:pkg jarchive)
+    (jarchive-setup))
 #+end_src
