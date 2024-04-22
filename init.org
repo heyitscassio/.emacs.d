@@ -373,71 +373,17 @@ hides minor modes from modeline
   (setq org-agenda-files '("~/doc/agendas/agenda.org"))
 #+end_src
 
-* Theme
-** Fonts
+** Hooks
 
 #+begin_src emacs-lisp
-  (defvar my-font)
-  (defvar big-font-size)
-  (defvar big-font--last-size)
+  (defvar after-enable-theme-hook nil
+    "Normal hook run after enabling a theme.")
 
-  (setq my-font (font-spec :family "Go Mono Nerd Font"))
+  (defun run-after-enable-theme-hook (&rest _args)
+    "Run `after-enable-theme-hook'."
+    (run-hooks 'after-enable-theme-hook))
 
-  (if (string= (system-name) "intus")
-      (progn
-        (font-put my-font :size 14)
-        (setq big-font-size 18))
-    (progn
-      (font-put my-font :size 20)
-      (setq big-font-size 25)))
-
-  (defun my/set-font-faces (font)
-    (if window-system
-        (let* ((main-font font)
-               (fallback "monospace")
-               (font (if (list-fonts main-font) main-font fallback)))
-          (set-frame-font font nil t))))
-
-  (if (daemonp)
-      (add-hook 'after-make-frame-functions
-                (lambda (frame)
-                  (with-selected-frame frame (my/set-font-faces my-font))))
-    (my/set-font-faces my-font))
-
-  (define-minor-mode big-font-mode
-    nil
-    :global t
-    (if big-font-mode
-        (progn
-          (setq big-font--last-size (font-get my-font :size))
-          (font-put my-font :size big-font-size)
-          (my/set-font-faces my-font))
-      (progn
-        (font-put my-font :size big-font--last-size)
-        (setq big-font--last-size nil)
-        (my/set-font-faces my-font))))
-#+end_src
-
-** Colorscheme
-
-#+begin_src emacs-lisp
-  (setup (:pkg modus-themes)
-    (:require modus-themes)
-    (:option
-     modus-themes-common-palette-overrides modus-themes-preset-overrides-intense
-     modus-themes-italic-constructs t
-     modus-themes-org-blocks 'gray-background)
-    (modus-themes-select 'modus-vivendi))
-
-  ;; (setup (:pkg ef-themes)
-  ;;   (:require ef-themes)
-  ;;   (ef-themes-select 'ef-winter))
-#+end_src
-
-** Pretify symbols
-
-#+begin_src emacs-lisp
-  (global-prettify-symbols-mode)
+  (advice-add 'enable-theme :after #'run-after-enable-theme-hook)
 #+end_src
 
 * Paths
@@ -468,6 +414,41 @@ hides minor modes from modeline
         vc-make-backup-files t
         kept-old-versions 10
         kept-new-versions 10)
+#+end_src
+
+* Theme
+** Fonts
+
+#+begin_src emacs-lisp
+  (setup (:pkg fontaine)
+    (:option fontaine-latest-state-file (locate-user-emacs-file "fontaine-latest-state.eld")
+             fontaine-presets '((regular :default-height 170)
+                                (big :default-height 200)
+                                (t :default-family "Go Mono Nerd Font")))
+    (fontaine-set-preset (or (fontaine-restore-latest-preset) 'regular))
+    (fontaine-mode 1))
+#+end_src
+
+** Colorscheme
+
+#+begin_src emacs-lisp
+  (setup (:pkg modus-themes)
+    (:require modus-themes)
+    (:option
+     modus-themes-common-palette-overrides modus-themes-preset-overrides-intense
+     modus-themes-italic-constructs t
+     modus-themes-org-blocks 'gray-background)
+    (modus-themes-select 'modus-vivendi))
+
+  ;; (setup (:pkg ef-themes)
+  ;;   (:require ef-themes)
+  ;;   (ef-themes-select 'ef-winter))
+#+end_src
+
+** Pretify symbols
+
+#+begin_src emacs-lisp
+  (global-prettify-symbols-mode)
 #+end_src
 
 * Bindings
@@ -761,155 +742,14 @@ hides minor modes from modeline
 
 #+begin_src emacs-lisp
   (setup (:pkg minions)
-    (:require minions))
-#+end_src
-
-** Nyan Mode
-
-#+begin_src emacs-lisp
-  (setup (:pkg nyan-mode)
-    (nyan-mode))
+    (minions-mode 1))
 #+end_src
 
 ** Base Config
 
 #+begin_src emacs-lisp
-  ;; (setq display-time-format "%l:%M %p %b %y"
-  ;;       display-time-default-load-average nil)
-
-  ;; (defun +my-mode-line/get-current-git-branch ()
-  ;;   (when vc-mode
-  ;;     (when-let* ((current-file (buffer-file-name)))
-  ;;       (list
-  ;;        " "
-  ;;        (vc-git--symbolic-ref current-file)))))
-
-  ;; (defun +my-mode-line/fill (reserve)
-  ;;   "Return empty space using FACE and leaving RESERVE space on the right."
-  ;;   (when
-  ;;     (and window-system (eq 'right (get-scroll-bar-mode)))
-  ;;     (setq reserve (- reserve 3)))
-  ;;   (propertize " "
-  ;;     'display
-  ;;     `((space :align-to (- (+ right right-fringe right-margin) ,reserve)))))
-
-  ;; (defun +my-mode-line/escape (str)
-  ;;   (replace-regexp-in-string "%" "%%" str))
-
-  ;; (defun +my-mode-line/format (left right)
-  ;;   (let ((right-format (+my-mode-line/escape (format-mode-line right)))
-  ;;         (left-format (+my-mode-line/escape (format-mode-line left))))
-  ;;     (list
-  ;;      left-format
-  ;;      (+my-mode-line/fill (length right-format))
-  ;;      right-format)))
-
-  ;; (defun +my-modeline/show-persp ()
-  ;;   (when (featurep 'persp-mode)
-  ;;     (let* ((persp-names (remove "none" (mapcar #'safe-persp-name (persp-persps))))
-  ;;            (format-name (lambda (name idx) (concat (int-to-string idx) " " name)))
-  ;;            (current-persp (safe-persp-name (get-current-persp)))
-  ;;            (idx (length persp-names))
-  ;;            (formatted '()))
-  ;;       (dolist (name persp-names)
-  ;;         (setq formatted (append formatted
-  ;;                                 (list
-  ;;                                  (when (not (string-equal name (car persp-names)))
-  ;;                                    " ")
-  ;;                                  (if (string-equal name current-persp)
-  ;;                                      (propertize (funcall format-name name idx) 'face '(:inherit font-lock-keyword-face))
-  ;;                                    (funcall format-name name idx))))
-  ;;               idx (- idx 1)))
-  ;;       (add-to-list 'formatted "[" t)
-  ;;       (add-to-list 'formatted "]")
-  ;;       (reverse formatted))))
-
-  ;; (setq-default
-  ;;  mode-line-format
-  ;;  (list
-  ;;   '(:eval
-  ;;     (+my-mode-line/format
-  ;;      (list
-  ;;       evil-mode-line-tag
-  ;;       '(:propertize "%e " face warning)
-  ;;       `(:propertize "%b " face mode-line-emphasis help-echo ,(buffer-file-name))
-  ;;       "[%wl+] "
-  ;;       mode-line-position)
-  ;;      (list
-  ;;       '(:eval (+my-modeline/show-persp))
-  ;;       " "
-  ;;       `(:propertize
-  ;;         "menu"
-  ;;         mouse-face mode-line-highlight
-  ;;         local-map ,(make-mode-line-mouse-map 'mouse-1 'minions-minor-modes-menu))
-  ;;       '(:eval (when (and (featurep 'flymake) flymake-mode) flymake-mode-line-format))
-  ;;       '(:eval (+my-mode-line/get-current-git-branch))
-  ;;       " "
-  ;;       mode-name
-  ;;       " ")))))
-
   (setup (:require my-modeline)
     (setq-default mode-line-format my-modeline-format))
-#+end_src
-
-** Doom modeline
-
-#+begin_src emacs-lisp
-  (setup (:pkg minions)
-    (minions-mode 1))
-
-  ;; (setup (:pkg doom-modeline)
-  ;;   ;; (:hook-into after-init-hook)
-  ;;   (:option doom-modeline-height 35
-  ;;            doom-modeline-lsp t
-  ;;            doom-modeline-github nil
-  ;;            doom-modeline-mu4e nil
-  ;;            ;; doom-modeline-irc t
-  ;;            doom-modeline-minor-modes t
-  ;;            doom-modeline-modal-icon nil
-  ;;            doom-modeline-persp-name t
-  ;;            doom-modeline-buffer-file-name-style 'truncate-except-project)
-
-  ;;   (:load-after doom-modeline
-  ;;     (doom-modeline-def-segment show-persp
-  ;;       (when (featurep 'persp-mode)
-  ;;         (let* ((persp-names (remove "none" (mapcar #'safe-persp-name (persp-persps))))
-  ;;                (format-name (lambda (name idx) (concat (int-to-string idx) " " name)))
-  ;;                (current-persp (safe-persp-name (get-current-persp)))
-  ;;                (idx (length persp-names))
-  ;;                (formatted '()))
-  ;;           (dolist (name persp-names)
-  ;;             (setq formatted (append formatted
-  ;;                                     (list
-  ;;                                      (when (not (string-equal name (car persp-names)))
-  ;;                                        " ")
-  ;;                                      (if (string-equal name current-persp)
-  ;;                                          (propertize (funcall format-name name idx) 'face '(:inherit font-lock-keyword-face))
-  ;;                                        (funcall format-name name idx))))
-  ;;                   idx (- idx 1)))
-  ;;           (add-to-list 'formatted " [" t)
-  ;;           (add-to-list 'formatted "] ")
-  ;;           (reverse formatted))))
-
-  ;;     (doom-modeline-def-modeline 'my-simple-line
-  ;;       '(bar modals matches buffer-info remote-host parrot selection-info)
-  ;;       '(show-persp misc-info minor-modes input-method buffer-encoding major-mode process vcs checker)))
-
-  ;;   (add-hook 'doom-modeline-mode-hook
-  ;;             (lambda ()
-  ;;               (doom-modeline-set-modeline 'my-simple-line 'default)))
-
-
-  ;;   (doom-modeline-mode 1)
-
-  ;;   (:load-after evil
-  ;;     (setq evil-normal-state-tag ""
-  ;;           evil-emacs-state-tag ""
-  ;;           evil-insert-state-tag ""
-  ;;           evil-motion-state-tag ""
-  ;;           evil-visual-state-tag ""
-  ;;           evil-operator-state-tag ""))
-  ;;   (add-hook 'server-switch-hook #'force-mode-line-update))
 #+end_src
 
 * Workspaces
@@ -935,8 +775,11 @@ hides minor modes from modeline
       "TAB 9" (lambda () (interactive) (persp-switch-by-index 8))
       "TAB 0" (lambda () (interactive) (persp-switch-by-index nil)))
     (:load-after persp-mode-autoloads
-      (setq persp-autokill-buffer-on-remove 'kill)
+      (setq persp-autokill-buffer-on-remove 'kill-weak)
+      (setq persp-auto-resume-time 0.1)
       (add-hook 'window-setup-hook #'(lambda () (persp-mode 1))))
+
+    (add-to-list 'persp-save-buffer-functions #'my-persp-ignore-none-persp)
 
     (defun persp-switch-by-index (index)
       "Switch to perspective by index, if the index is larger than the last perspecive or nil, switch to last perspective"
@@ -946,7 +789,14 @@ hides minor modes from modeline
                          (car (last persps)))))
         (if selected
             (persp-switch (safe-persp-name selected))
-          (persp-switch (safe-persp-name (car (last persps))))))))
+          (persp-switch (safe-persp-name (car (last persps)))))))
+
+    (defun my-persp-ignore-none-persp (buffer)
+      (when (not (persp--buffer-in-persps buffer))
+        'skip)))
+
+  ;; (get-current-persp)
+  ;; (window-persp-set-p)
 #+end_src
 
 * Auto Revert
@@ -1100,6 +950,7 @@ hides minor modes from modeline
              [backtab] corfu-previous))
     (:option corfu-cycle t
              corfu-auto t
+             corfu-popupinfo-delay '(1.0 . 0.5)
              corfu-auto-delay 0.1
              corfu-auto-prefix 2
              corfu-quit-no-match nil
@@ -1125,7 +976,7 @@ hides minor modes from modeline
 #+begin_src emacs-lisp
   (setup (:pkg orderless)
     (require 'orderless)
-    (setq orderless-matching-styles '(orderless-flex orderless-literal orderless-regexp)
+    (setq orderless-matching-styles '(orderless-literal orderless-flex orderless-regexp)
           completion-styles '(orderless basic)
           completion-category-defaults nil
           completion-category-overrides '((file (styles . (partial-completion))))))
@@ -1167,6 +1018,13 @@ hides minor modes from modeline
 #+end_src
 
 * Languages
+
+** Common Lisp
+
+#+begin_src emacs-lisp
+  (setup (:pkg sly))
+#+end_src
+
 ** Clojure
 #+begin_src emacs-lisp
   (setup (:pkg cider)
@@ -1174,19 +1032,18 @@ hides minor modes from modeline
              cider-repl-display-help-banner nil
              cider-eval-result-duration 'change
              cider-repl-pop-to-buffer-on-connect 'display-only
-             cider-xref-fn-depth 90)
+             cider-xref-fn-depth 90
+             cider-offer-to-open-cljs-app-in-browser nil)
     (:ignore-buffers "\\*cider-repl.*" "\\*nrepl-server .*")
     (:display-rule "\\*cider-repl.*"
                    (display-buffer-in-side-window)
-                   ;; (dedicated . t)
                    (window-height  . 0.20)
-                   ;; (window-parameters (no-other-window . t))
-                   )
+                   (preserve-size . (nil . t)))
     (:with-map clojure-mode-map
       (:local-leader
         "e" '(nil :which-key "Eval")
         "eb" '(cider-eval-buffer :which-key "Eval buffer")
-        "ed" '(cider-eval-defun-at-point :which-key "Eval debug")
+        "ed" '(cider-debug-defun-at-point :which-key "Eval debug")
         "'" '(cider-connect-clj :which-key "Connect clj")
         "\"" '(cider-connect-cljs :which-key "Connect cljs")
         "j" '(cider-jack-in-clj :which-key "Jack-in clj")
@@ -1229,6 +1086,14 @@ hides minor modes from modeline
 
 
   (setup (:pkg nix-mode))
+
+  ;; (add-hook 'prog-mode-hook
+  ;;           (lambda ()
+  ;;             (add-hook 'before-save-hook 'eglot-format nil t)))
+
+  (with-eval-after-load 'eglot
+    (dolist (mode '((nix-mode . ("nixd"))))
+      (add-to-list 'eglot-server-programs mode)))
 #+end_src
 
 ** Lua
@@ -1268,6 +1133,11 @@ hides minor modes from modeline
     (:option typescript-indent-level 2))
 #+end_src
 
+** Yaml
+
+#+begin_src emacs-lisp
+  (setup (:pkg yaml-mode))
+#+end_src
 * Programs
 ** EMMS
 
@@ -1434,7 +1304,8 @@ hides minor modes from modeline
       "c" '(nil :which-key "Eglot")
       "cc" '(eglot-code-actions :which-key "Code Actions")
       "cr" '(eglot-rename :which-key "Rename"))
-    (:option eglot-confirm-server-initiated-edits nil)
+    (:option eglot-confirm-server-initiated-edits nil
+             max-mini-window-height 2)
     (:with-mode (clojure-mode clojurescript-mode go-mode scala-mode c-mode)
       (:hook #'eglot-ensure))
     (:with-mode eglot-managed-mode

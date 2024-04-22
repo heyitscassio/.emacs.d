@@ -161,6 +161,8 @@
 (defvar-local my-modeline-buffer-state
   '(:eval (my-modeline--buffer-state)))
 
+(defvar flymake-mode nil)
+
 (defun my-modeline--flymake ()
   (if flymake-mode
       (flymake--mode-line-counters)
