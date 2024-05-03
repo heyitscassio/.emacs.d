@@ -155,7 +155,7 @@ If PATH does not exist, abort the evaluation."
 (scroll-bar-mode -1)
 (tool-bar-mode -1)
 (tooltip-mode -1)
-(set-fringe-mode 10)
+(set-fringe-mode '(10 . nil))
 (menu-bar-mode -1)
 (blink-cursor-mode 0)
 (set-default 'truncate-lines t)
@@ -179,10 +179,6 @@ If PATH does not exist, abort the evaluation."
   (add-hook 'magit-pre-refresh-hook 'diff-hl-magit-pre-refresh)
   (add-hook 'magit-post-refresh-hook 'diff-hl-magit-post-refresh)
   (global-diff-hl-mode))
-;; (use-package git-gutter)
-
-;; (setup (:pkg git-gutter)
-;;   (global-git-gutter-mode))
 
 (setq mouse-wheel-scroll-amount '(1 ((shift) . 1)))
 (setq mouse-wheel-progressive-speed nil)
@@ -195,14 +191,14 @@ If PATH does not exist, abort the evaluation."
 (column-number-mode)
 
 (setq display-line-numbers-type 'relative)
+(setq display-line-numbers-width-start t)
+(setq display-line-numbers-grow-only t)
 
 ;; Enable line numbers for some modes
 (dolist (mode '(text-mode-hook
                 prog-mode-hook
                 conf-mode-hook))
   (add-hook mode (lambda ()
-                   ;; (setq display-line-numbers-width-start t)
-                   ;; (setq display-line-numbers-width 1)
                    (display-line-numbers-mode 1))))
 
 ;; Override some modes which derive from the above
@@ -215,6 +211,7 @@ If PATH does not exist, abort the evaluation."
 ;; annoying ass sound
 (setq ring-bell-function 'ignore)
 (defalias 'yes-or-no-p 'y-or-n-p)
+(setq frame-resize-pixelwise 't)
 (save-place-mode)
 
 (setup (:pkg pulsar)
@@ -624,13 +621,27 @@ If PATH does not exist, abort the evaluation."
 
 (setq-default show-trailing-whitespace t)
 
-(setup (:pkg lispyville)
-  (:hook-into lispy-mode)
-  (:when-loaded (lispyville-set-key-theme
-                 '(slurp/barf-lispy operators c-w additional commentary))))
+;; (setup (:pkg lispyville)
+;;   (:hook-into lispy-mode)
+;;   (:when-loaded (lispyville-set-key-theme
+;;                  '(slurp/barf-lispy operators c-w additional commentary))))
 
-(setup (:pkg lispy)
-  (:option lispy-close-quotes-at-end-p t)
+;; (setup (:pkg lispy)
+;;   (:option lispy-close-quotes-at-end-p t)
+;;   (:hook-into lisp-mode
+;;               emacs-lisp-mode
+;;               ielm-mode
+;;               scheme-mode
+;;               racket-mode
+;;               hy-mode
+;;               lfe-mode
+;;               dune-mode
+;;               clojure-mode
+;;               fennel-mode)
+;;   (:when-loaded
+;;     (lispy-set-key-theme '(lispy c-digits))))
+
+(setup (:pkg evil-cleverparens)
   (:hook-into lisp-mode
               emacs-lisp-mode
               ielm-mode
@@ -640,9 +651,7 @@ If PATH does not exist, abort the evaluation."
               lfe-mode
               dune-mode
               clojure-mode
-              fennel-mode)
-  (:when-loaded
-    (lispy-set-key-theme '(lispy c-digits))))
+              fennel-mode))
 
 (add-hook 'prog-mode-hook
           (lambda ()
