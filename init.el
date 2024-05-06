@@ -41,6 +41,7 @@
 
 ;; Use straight.el for use-package expressions
 (straight-use-package 'use-package)
+(setq straight-use-package-by-default t)
 
 (straight-use-package '(setup :type git :host nil :repo "https://git.sr.ht/~pkal/setup"))
 (require 'setup)
@@ -148,175 +149,6 @@ If PATH does not exist, abort the evaluation."
                               (face-foreground (intern (format "ansi-color-bright-%s" color)))))
                     colors))))
 
-(let ((default-directory (concat (file-name-directory user-init-file) "lisp")))
-  (normal-top-level-add-subdirs-to-load-path))
-
-(setq inhibit-startup-message t)
-(scroll-bar-mode -1)
-(tool-bar-mode -1)
-(tooltip-mode -1)
-(set-fringe-mode '(10 . nil))
-(menu-bar-mode -1)
-(blink-cursor-mode 0)
-(set-default 'truncate-lines t)
-
-(setq help-window-select t)
-
-(setq display-buffer-alist
-      '(("\\*\\([Hh]elp\\|Messages\\)\\*"
-         (display-buffer-in-side-window)
-         (window-height . 0.25)
-         (side . bottom)
-         (slot . 0)
-         (window-parameters . ((mode-line-format . none))))))
-
-;; (setup (:pkg all-the-icons)
-;;   ;; (:option all-the-icons-scale-factor 2
-;;   ;;          all-the-icons-wicon-scale-factor 2)
-;;   )
-
-(setup (:pkg diff-hl)
-  (add-hook 'magit-pre-refresh-hook 'diff-hl-magit-pre-refresh)
-  (add-hook 'magit-post-refresh-hook 'diff-hl-magit-post-refresh)
-  (global-diff-hl-mode))
-
-(setq mouse-wheel-scroll-amount '(1 ((shift) . 1)))
-(setq mouse-wheel-progressive-speed nil)
-(setq mouse-wheel-follow-mouse 't)
-(setq scroll-step 1) 
-(setq use-dialog-box nil)
-
-(setup (:pkg diminish))
-
-(column-number-mode)
-
-(setq display-line-numbers-type 'relative)
-(setq display-line-numbers-width-start t)
-(setq display-line-numbers-grow-only t)
-
-;; Enable line numbers for some modes
-(dolist (mode '(text-mode-hook
-                prog-mode-hook
-                conf-mode-hook))
-  (add-hook mode (lambda ()
-                   (display-line-numbers-mode 1))))
-
-;; Override some modes which derive from the above
-(dolist (mode '(org-mode-hook))
-  (add-hook mode (lambda () (display-line-numbers-mode 0))))
-
-(setq large-file-warning-threshold nil)
-(setq vc-follow-symlinks t)
-(setq ad-redefinition-action 'accept)
-;; annoying ass sound
-(setq ring-bell-function 'ignore)
-(defalias 'yes-or-no-p 'y-or-n-p)
-(setq frame-resize-pixelwise 't)
-(save-place-mode)
-
-(setup (:pkg pulsar)
-  (:when-loaded
-    (:option pulsar-pulse-functions (append pulsar-pulse-functions
-                                            '(evil-goto-line
-                                              evil-goto-first-line
-                                              evil-scroll-down
-                                              evil-scroll-up
-                                              evil-window-down
-                                              evil-window-up
-                                              evil-window-left
-                                              evil-window-right
-                                              evil-window-next
-                                              evil-jump-backward
-                                              evil-jump-forward))))
-  (add-hook 'minibuffer-setup-hook #'pulsar-pulse-line)
-  (advice-add 'my/switch-buffer :after (lambda (&rest _) (pulsar-pulse-line)))
-  (:load-after consult
-    (add-hook 'consult-after-jump-hook #'pulsar-recenter-top)
-    (add-hook 'consult-after-jump-hook #'pulsar-reveal-entry))
-  (pulsar-global-mode))
-
-(setup (:pkg rainbow-mode)
-  (:leader
-    "o r" '(rainbow-mode :which-key "Toggle rainbow mode")))
-
-(defvar nextcloud-password)
-(defvar nextcloud-user)
-(defvar nextcloud-remote-path)
-(defvar nextcloud-local-path)
-(defvar nextcloud-url)
-
-(defun sync-nextcloud ()
-  (interactive)
-  (let ((command (format "nextcloudcmd --password '%s' --user '%s' --path '%s' '%s' '%s'"
-                         nextcloud-password
-                         nextcloud-user
-                         nextcloud-remote-path
-                         nextcloud-local-path
-                         nextcloud-url)))
-    (save-window-excursion
-      (shell-command command))
-    (message "sync done")
-    (revert-buffer :ignore-auto :noconfirm)))
-
-(setq org-agenda-files '("~/doc/agendas/agenda.org"))
-
-(defvar after-enable-theme-hook nil
-  "Normal hook run after enabling a theme.")
-
-(defun run-after-enable-theme-hook (&rest _args)
-  "Run `after-enable-theme-hook'."
-  (run-hooks 'after-enable-theme-hook))
-
-(advice-add 'enable-theme :after #'run-after-enable-theme-hook)
-
-;; Change the user-emacs-directory to keep unwanted things out of ~/.emacs.d
-(setq user-emacs-directory (expand-file-name "~/.cache/emacs/")
-      url-history-file (expand-file-name "url/history" user-emacs-directory))
-
-;; Use no-littering to automatically set common paths to the new user-emacs-directory
-(setup (:pkg no-littering)
- (require 'no-littering))
-
-;; Keep customization settings in a temporary file (thanks Ambrevar!)
-(setq custom-file
-      (if (boundp 'server-socket-dir)
-          (expand-file-name "custom.el" server-socket-dir)
-        (expand-file-name (format "emacs-custom-%s.el" (user-uid)) temporary-file-directory)))
-(load custom-file t)
-
-; Backup directory
-(setq backup-directory-alist `((".*" . ,(expand-file-name "backups" user-emacs-directory)))
-      auto-save-file-name-transforms `((".*" ,(expand-file-name "backups" user-emacs-directory) t))
-      create-lockfiles nil
-      backup-by-copying t
-      version-control t
-      delete-old-versions t
-      vc-make-backup-files t
-      kept-old-versions 10
-      kept-new-versions 10)
-
-(setup (:pkg fontaine)
-  (:option fontaine-latest-state-file (locate-user-emacs-file "fontaine-latest-state.eld")
-           fontaine-presets '((regular :default-height 170)
-                              (big :default-height 200)
-                              (t :default-family "Go Mono Nerd Font")))
-  (fontaine-set-preset (or (fontaine-restore-latest-preset) 'regular))
-  (fontaine-mode 1))
-
-(setup (:pkg modus-themes)
-  (:require modus-themes)
-  (:option
-   modus-themes-common-palette-overrides modus-themes-preset-overrides-intense
-   modus-themes-italic-constructs t
-   modus-themes-org-blocks 'gray-background)
-  (modus-themes-select 'modus-vivendi))
-
-;; (setup (:pkg ef-themes)
-;;   (:require ef-themes)
-;;   (ef-themes-select 'ef-winter))
-
-(global-prettify-symbols-mode)
-
 (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
 
 (setup (:pkg undo-tree)
@@ -332,13 +164,6 @@ If PATH does not exist, abort the evaluation."
   (setq evil-undo-system 'undo-tree)
   (setq evil-echo-state nil)
   (setq evil-auto-indent t)
-
-  ;; (setq evil-normal-state-tag (propertize " " 'face 'font-lock-string-face)
-  ;;       evil-emacs-state-tag (propertize " " 'face 'font-lock-warning-face)
-  ;;       evil-insert-state-tag (propertize " " 'face 'font-lock-doc-markup-face)
-  ;;       evil-motion-state-tag (propertize " " 'face 'font-lock-constant-face)
-  ;;       evil-visual-state-tag (propertize " " 'face 'font-lock-escape-face)
-  ;;       evil-operator-state-tag (propertize " " 'face 'font-lock-function-name-face))
 
   (defun my/elisp-lookup ()
     (interactive)
@@ -375,62 +200,62 @@ If PATH does not exist, abort the evaluation."
   (:load-after evil
     (evil-collection-init)))
 
-(setup (:pkg evil-goggles)
-  (:when-loaded
-    (:option evil-goggles-enable-delete t
-             evil-goggles-enable-change t
-             evil-goggles--commands
-             (append evil-goggles--commands
-                     '((evil-magit-yank-whole-line
-                        :face evil-goggles-yank-face
-                        :switch evil-goggles-enable-yank
-                        :advice evil-goggles--generic-async-advice)
-                       (+evil:yank-unindented
-                        :face evil-goggles-yank-face
-                        :switch evil-goggles-enable-yank
-                        :advice evil-goggles--generic-async-advice)
-                       (+eval:region
-                        :face evil-goggles-yank-face
-                        :switch evil-goggles-enable-yank
-                        :advice evil-goggles--generic-async-advice)
-                       (lispyville-delete
-                        :face evil-goggles-delete-face
-                        :switch evil-goggles-enable-delete
-                        :advice evil-goggles--generic-blocking-advice)
-                       (lispyville-delete-line
-                        :face evil-goggles-delete-face
-                        :switch evil-goggles-enable-delete
-                        :advice evil-goggles--delete-line-advice)
-                       (lispyville-yank
-                        :face evil-goggles-yank-face
-                        :switch evil-goggles-enable-yank
-                        :advice evil-goggles--generic-async-advice)
-                       (lispyville-yank-line
-                        :face evil-goggles-yank-face
-                        :switch evil-goggles-enable-yank
-                        :advice evil-goggles--generic-async-advice)
-                       (lispyville-change
-                        :face evil-goggles-change-face
-                        :switch evil-goggles-enable-change
-                        :advice evil-goggles--generic-blocking-advice)
-                       (lispyville-change-line
-                        :face evil-goggles-change-face
-                        :switch evil-goggles-enable-change
-                        :advice evil-goggles--generic-blocking-advice)
-                       (lispyville-change-whole-line
-                        :face evil-goggles-change-face
-                        :switch evil-goggles-enable-change
-                        :advice evil-goggles--generic-blocking-advice)
-                       (lispyville-indent
-                        :face evil-goggles-indent-face
-                        :switch evil-goggles-enable-indent
-                        :advice evil-goggles--generic-async-advice)
-                       (lispyville-join
-                        :face evil-goggles-join-face
-                        :switch evil-goggles-enable-join
-                        :advice evil-goggles--join-advice)))))
-  (evil-goggles-mode)
-  (evil-goggles-use-diff-faces))
+;; (setup (:pkg evil-goggles)
+;;   (:when-loaded
+;;     (:option evil-goggles-enable-delete t
+;;              evil-goggles-enable-change t
+;;              evil-goggles--commands
+;;              (append evil-goggles--commands
+;;                      '((evil-magit-yank-whole-line
+;;                         :face evil-goggles-yank-face
+;;                         :switch evil-goggles-enable-yank
+;;                         :advice evil-goggles--generic-async-advice)
+;;                        (+evil:yank-unindented
+;;                         :face evil-goggles-yank-face
+;;                         :switch evil-goggles-enable-yank
+;;                         :advice evil-goggles--generic-async-advice)
+;;                        (+eval:region
+;;                         :face evil-goggles-yank-face
+;;                         :switch evil-goggles-enable-yank
+;;                         :advice evil-goggles--generic-async-advice)
+;;                        (lispyville-delete
+;;                         :face evil-goggles-delete-face
+;;                         :switch evil-goggles-enable-delete
+;;                         :advice evil-goggles--generic-blocking-advice)
+;;                        (lispyville-delete-line
+;;                         :face evil-goggles-delete-face
+;;                         :switch evil-goggles-enable-delete
+;;                         :advice evil-goggles--delete-line-advice)
+;;                        (lispyville-yank
+;;                         :face evil-goggles-yank-face
+;;                         :switch evil-goggles-enable-yank
+;;                         :advice evil-goggles--generic-async-advice)
+;;                        (lispyville-yank-line
+;;                         :face evil-goggles-yank-face
+;;                         :switch evil-goggles-enable-yank
+;;                         :advice evil-goggles--generic-async-advice)
+;;                        (lispyville-change
+;;                         :face evil-goggles-change-face
+;;                         :switch evil-goggles-enable-change
+;;                         :advice evil-goggles--generic-blocking-advice)
+;;                        (lispyville-change-line
+;;                         :face evil-goggles-change-face
+;;                         :switch evil-goggles-enable-change
+;;                         :advice evil-goggles--generic-blocking-advice)
+;;                        (lispyville-change-whole-line
+;;                         :face evil-goggles-change-face
+;;                         :switch evil-goggles-enable-change
+;;                         :advice evil-goggles--generic-blocking-advice)
+;;                        (lispyville-indent
+;;                         :face evil-goggles-indent-face
+;;                         :switch evil-goggles-enable-indent
+;;                         :advice evil-goggles--generic-async-advice)
+;;                        (lispyville-join
+;;                         :face evil-goggles-join-face
+;;                         :switch evil-goggles-enable-join
+;;                         :advice evil-goggles--join-advice)))))
+;;   (evil-goggles-mode)
+;;   (evil-goggles-use-diff-faces))
 
 (setup (:pkg evil-anzu)
   (:load-after evil
@@ -439,19 +264,31 @@ If PATH does not exist, abort the evaluation."
     (require 'evil-anzu)))
 
 (setup (:pkg which-key)
-  (diminish 'which-key-mode)
+  ;; (diminish 'which-key-mode)
   (which-key-mode)
   (setq which-key-idle-delay 0.3))
 
-(setup (:pkg general)
-  (:require general)
-  (:leader
+(use-package general
+  :config
+  (general-create-definer general-leader
+    :states 'normal
+    :keymaps 'override
+    :prefix "SPC"
+    :global-prefix "C-SPC")
+  (general-create-definer general-local-leader
+    :states 'normal
+    :prefix "SPC m"
+    :global-prefix "C-SPC m"))
+
+(use-package emacs
+  :general
+  (general-leader
     "b" '(nil :which-key "Buffers")
     "br" '(revert-buffer :which-key "revert buffer")
     "bd" '(kill-current-buffer :which-key "kill current buffer")
 
     "f" '(nil :which-key "Files")
-    "ff" '(find-file :which-key "Ripgrep")
+    "ff" '(find-file :which-key "Find file")
 
     "h" '(nil :which-key "Help")
     "hc" '(describe-char :which-key "Describe Char")
@@ -467,84 +304,219 @@ If PATH does not exist, abort the evaluation."
     "pf" '(project-find-file :which-key "Project find file")
     "qK" '(save-buffers-kill-emacs :which-key "Apps")))
 
-(setup (:pkg evil-surround)
+(use-package evil-surround
+  :init
   (global-evil-surround-mode))
 
-;; TODO: Mode this to another section
-;; (setq-default fill-column 80)
+(let ((default-directory (concat (file-name-directory user-init-file) "lisp")))
+  (normal-top-level-add-subdirs-to-load-path))
 
-;; Turn on indentation and auto-fill mode for Org files
-(defun my/org-mode-setup ()
-  (org-indent-mode)
-  (auto-fill-mode 0)
-  (visual-line-mode 1)
-  ;; (setq evil-auto-indent nil)
-  (diminish org-indent-mode))
+(setq inhibit-startup-message t)
+(scroll-bar-mode -1)
+(tool-bar-mode -1)
+(tooltip-mode -1)
+(set-fringe-mode '(10 . nil))
+(menu-bar-mode -1)
+(blink-cursor-mode 0)
+(set-default 'truncate-lines t)
 
-(setup (:pkg org)
-  (:also-load org-tempo)
-  (:hook my/org-mode-setup)
-  (:local-leader
-    "t" '(org-todo  :which-key "Mark todo")
-    "T" '(org-todo-list  :which-key "Todo List")
-    "x" '(org-toggle-checkbox :which-key "Toggle Checkbox")
-    "d" '(nil :which-key "Dates")
-    "dd" '(org-deadline :which-key "org-deadline")
-    "ds" '(org-schedule :which-key "org-schedule")
-    "dt" '(org-time-stamp :which-key "org-timestamp")
-    "dT" '(org-time-stamp-inactive :which-key "org-timestamp"))
-  (setq org-ellipsis " ▾"
-        org-hide-emphasis-markers t
-        org-src-fontify-natively t
-        org-fontify-quote-and-verse-blocks t
-        org-src-tab-acts-natively t
-        org-edit-src-content-indentation 2
-        org-hide-block-startup nil
-        org-src-preserve-indentation nil
-        org-startup-folded 'content
-        org-cycle-separator-lines 2
-        org-capture-bookmark nil)
+(use-package diff-hl
+  :hook ((magit-pre-refresh . diff-hl-magit-pre-refresh)
+         (magit-post-refresh . diff-hl-magit-post-refresh))
+  :init
+  (global-diff-hl-mode))
 
-  (require 'ox-latex)
-  (add-to-list 'org-latex-packages-alist '("" "minted"))
+(setq help-window-select t)
 
-  (setq org-latex-listings 'minted)
+(setq display-buffer-alist
+      '(("\\*\\([Hh]elp\\|Messages\\)\\*"
+         (display-buffer-in-side-window)
+         (window-height . 0.25)
+         (side . bottom)
+         (slot . 0)
+         (window-parameters . ((mode-line-format . none))))))
 
-  (setq org-latex-pdf-process
-        '("pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"
-          "pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"
-          "pdflatex -shell-escape -interaction nonstopmode -output-directory %o %f"))
+(setq mouse-wheel-scroll-amount '(1 ((shift) . 1)))
+(setq mouse-wheel-progressive-speed nil)
+(setq mouse-wheel-follow-mouse 't)
+(setq scroll-conservatively 1000)
+(setq scroll-margin 5)
+(setq use-dialog-box nil)
 
-  (setq org-refile-targets '((nil :maxlevel . 1)
-                             (org-agenda-files :maxlevel . 1)))
+(use-package diminish)
 
-  (setq org-outline-path-complete-in-steps nil)
-  (setq org-refile-use-outline-path t)
+(column-number-mode)
 
-  (evil-define-key '(normal insert visual) org-mode-map (kbd "C-j") 'org-next-visible-heading)
-  (evil-define-key '(normal insert visual) org-mode-map (kbd "C-k") 'org-previous-visible-heading)
+(setq display-line-numbers-type 'relative)
+(setq display-line-numbers-width-start t)
+(setq display-line-numbers-grow-only t)
 
-  (evil-define-key '(normal insert visual) org-mode-map (kbd "M-j") 'org-metadown)
-  (evil-define-key '(normal insert visual) org-mode-map (kbd "M-k") 'org-metaup)
+;; Enable line numbers for some modes
+(dolist (mode '(text-mode-hook
+                prog-mode-hook
+                conf-mode-hook))
+  (add-hook mode #'display-line-numbers-mode))
 
-  (org-babel-do-load-languages
-    'org-babel-load-languages
-    '((emacs-lisp . t)))
+;; Override some modes which derive from the above
+(dolist (mode '(org-mode-hook))
+  (add-hook mode (lambda () (display-line-numbers-mode 0))))
 
-  (push '("conf-unix" . conf-unix) org-src-lang-modes))
+(setq large-file-warning-threshold nil)
+(setq vc-follow-symlinks t)
+(setq ad-redefinition-action 'accept)
+;; annoying ass sound
+(setq ring-bell-function 'ignore)
+(defalias 'yes-or-no-p 'y-or-n-p)
+(setq frame-resize-pixelwise 't)
+(save-place-mode)
 
-;; This is needed as of Org 9.2
-(setup org-tempo
-  (:when-loaded
-    (add-to-list 'org-structure-template-alist '("sh" . "src sh"))
-    (add-to-list 'org-structure-template-alist '("el" . "src emacs-lisp"))
-    (add-to-list 'org-structure-template-alist '("li" . "src lisp"))
-    (add-to-list 'org-structure-template-alist '("sc" . "src scheme"))
-    (add-to-list 'org-structure-template-alist '("ts" . "src typescript"))
-    (add-to-list 'org-structure-template-alist '("py" . "src python"))
-    (add-to-list 'org-structure-template-alist '("go" . "src go"))
-    (add-to-list 'org-structure-template-alist '("yaml" . "src yaml"))
-    (add-to-list 'org-structure-template-alist '("json" . "src json"))))
+(use-package pulsar
+  :hook ((minibuffer-setup . pulsar-pulse-line)
+         (consult-after-jump . pulsar-recenter-top)
+         (consult-after-jump . pulsar-reveal-entry))
+  :config
+  (setq pulsar-pulse-functions (append pulsar-pulse-functions
+                                          '(evil-goto-line
+                                            evil-goto-first-line
+                                            evil-scroll-down
+                                            evil-scroll-up
+                                            evil-window-down
+                                            evil-window-up
+                                            evil-window-left
+                                            evil-window-right
+                                            evil-window-next
+                                            evil-jump-backward
+                                            evil-jump-forward)))
+  :init
+  (pulsar-global-mode))
+
+(use-package rainbow-mode
+  :hook (css-mode . rainbow-mode)
+  :general
+  (general-leader
+   "o R" 'rainbow-mode))
+
+(defvar nextcloud-password)
+(defvar nextcloud-user)
+(defvar nextcloud-remote-path)
+(defvar nextcloud-local-path)
+(defvar nextcloud-url)
+
+(defun sync-nextcloud ()
+  (interactive)
+  (let ((command (format "nextcloudcmd --password '%s' --user '%s' --path '%s' '%s' '%s'"
+                         nextcloud-password
+                         nextcloud-user
+                         nextcloud-remote-path
+                         nextcloud-local-path
+                         nextcloud-url)))
+    (save-window-excursion
+      (shell-command command))
+    (message "sync done")
+    (revert-buffer :ignore-auto :noconfirm)))
+
+(setq org-agenda-files '("~/doc/agendas/agenda.org"))
+
+(defvar after-enable-theme-hook nil
+  "Normal hook run after enabling a theme.")
+
+(defun run-after-enable-theme-hook (&rest _args)
+  "Run `after-enable-theme-hook'."
+  (run-hooks 'after-enable-theme-hook))
+
+(advice-add 'enable-theme :after #'run-after-enable-theme-hook)
+
+;; Change the user-emacs-directory to keep unwanted things out of ~/.emacs.d
+(setq user-emacs-directory (expand-file-name "~/.cache/emacs/")
+      url-history-file (expand-file-name "url/history" user-emacs-directory))
+
+;; Use no-littering to automatically set common paths to the new user-emacs-directory
+(use-package no-littering
+  :init
+  (require 'no-littering))
+
+;; Keep customization settings in a temporary file (thanks Ambrevar!)
+(setq custom-file
+      (if (boundp 'server-socket-dir)
+          (expand-file-name "custom.el" server-socket-dir)
+        (expand-file-name (format "emacs-custom-%s.el" (user-uid)) temporary-file-directory)))
+(load custom-file t)
+
+; Backup directory
+(setq backup-directory-alist `((".*" . ,(expand-file-name "backups" user-emacs-directory)))
+      auto-save-file-name-transforms `((".*" ,(expand-file-name "backups" user-emacs-directory) t))
+      create-lockfiles nil
+      backup-by-copying t
+      version-control t
+      delete-old-versions t
+      vc-make-backup-files t
+      kept-old-versions 10
+      kept-new-versions 10)
+
+(use-package fontaine
+  :custom
+  (fontaine-latest-state-file (locate-user-emacs-file "fontaine-latest-state.eld"))
+  (fontaine-presets '((regular :default-height 170)
+                      (big :default-height 200)
+                      (t :default-family "Go Mono Nerd Font")))
+  :config
+  (fontaine-set-preset (or (fontaine-restore-latest-preset) 'regular))
+  :init
+  (fontaine-mode))
+
+(use-package modus-themes
+  :custom
+  (modus-themes-italic-constructs t)
+  (modus-themes-org-blocks 'gray-background)
+  :config
+  (setq modus-themes-common-palette-overrides modus-themes-preset-overrides-intense)
+  (modus-themes-select 'modus-vivendi))
+
+(global-prettify-symbols-mode)
+
+(use-package org
+  :general
+  (general-local-leader
+   :keymaps 'org-mode-map
+   "t" '(org-todo  :which-key "Mark todo")
+   "T" '(org-todo-list  :which-key "Todo List")
+   "x" '(org-toggle-checkbox :which-key "Toggle Checkbox")
+   "d" '(nil :which-key "Dates")
+   "dd" '(org-deadline :which-key "org-deadline")
+   "ds" '(org-schedule :which-key "org-schedule")
+   "dt" '(org-time-stamp :which-key "org-timestamp")
+   "dT" '(org-time-stamp-inactive :which-key "org-timestamp"))
+  :custom
+  (org-ellipsis " ▾")
+  (org-hide-emphasis-markers t)
+  (org-src-fontify-natively t)
+  (org-fontify-quote-and-verse-blocks t)
+  (org-src-tab-acts-natively t)
+  (org-edit-src-content-indentation 2)
+  (org-hide-block-startup nil)
+  (org-src-preserve-indentation nil)
+  (org-startup-folded 'content)
+  (org-cycle-separator-lines 2)
+  (org-capture-bookmark nil)
+  :hook (org-mode . my-org-mode-setup)
+  :init
+  (defun my-org-mode-setup ()
+    (org-indent-mode)
+    (auto-fill-mode 0)
+    (visual-line-mode 1))
+  :config
+  (require 'org-tempo)
+  ;; (require 'ox-latex)
+
+  (add-to-list 'org-structure-template-alist '("sh" . "src sh"))
+  (add-to-list 'org-structure-template-alist '("el" . "src emacs-lisp"))
+  (add-to-list 'org-structure-template-alist '("li" . "src lisp"))
+  (add-to-list 'org-structure-template-alist '("sc" . "src scheme"))
+  (add-to-list 'org-structure-template-alist '("ts" . "src typescript"))
+  (add-to-list 'org-structure-template-alist '("py" . "src python"))
+  (add-to-list 'org-structure-template-alist '("go" . "src go"))
+  (add-to-list 'org-structure-template-alist '("yaml" . "src yaml"))
+  (add-to-list 'org-structure-template-alist '("json" . "src json")))
 
 (defun my/org-babel-tangle-config ()
   (when (string-equal (buffer-file-name)
@@ -556,39 +528,43 @@ If PATH does not exist, abort the evaluation."
             (lambda ()
               (add-hook 'after-save-hook #'my/org-babel-tangle-config)))
 
-(setup (:pkg minions)
-  (minions-mode 1))
+(use-package minions
+  :init
+  (minions-mode))
 
-(setup (:require my-modeline)
+(use-package my-modeline
+  :straight nil
+  :config
   (setq-default mode-line-format my-modeline-format))
 
-(setup (:pkg persp-mode)
-  (:leader
-    "bD" '(persp-kill-buffer :which-key "Kill buffer")
-    "TAB" '(:ignore t :which-key "Perspective")
-    "TAB n" '(persp-switch :which-key "Switch perspective")
-    "TAB k" '(persp-kill :which-key "Kill perspective")
-    "TAB l" '(persp-next :which-key "Next perspective")
-    "TAB h" '(persp-prev :which-key "Previous perspective"))
-  (:leader
-    "TAB 1" (lambda () (interactive) (persp-switch-by-index 0))
-    "TAB 2" (lambda () (interactive) (persp-switch-by-index 1))
-    "TAB 3" (lambda () (interactive) (persp-switch-by-index 2))
-    "TAB 4" (lambda () (interactive) (persp-switch-by-index 3))
-    "TAB 5" (lambda () (interactive) (persp-switch-by-index 4))
-    "TAB 6" (lambda () (interactive) (persp-switch-by-index 5))
-    "TAB 7" (lambda () (interactive) (persp-switch-by-index 6))
-    "TAB 8" (lambda () (interactive) (persp-switch-by-index 7))
-    "TAB 9" (lambda () (interactive) (persp-switch-by-index 8))
-    "TAB 0" (lambda () (interactive) (persp-switch-by-index nil)))
-  (:load-after persp-mode-autoloads
-    (setq persp-autokill-buffer-on-remove 'kill-weak)
-    (setq persp-auto-resume-time 0.1)
-    (add-hook 'window-setup-hook #'(lambda () (persp-mode 1))))
+(use-package persp-mode
+  :hook
+  (window-setup . persp-mode)
+  :general
+  (general-leader
+   "bD" '(persp-kill-buffer :which-key "Kill buffer")
+   "TAB" '(:ignore t :which-key "Perspective")
+   "TAB n" '(persp-switch :which-key "Switch perspective")
+   "TAB k" '(persp-kill :which-key "Kill perspective")
+   "TAB l" '(persp-next :which-key "Next perspective")
+   "TAB h" '(persp-prev :which-key "Previous perspective")
 
+   "TAB 1" (lambda () (interactive) (my-persp-switch-by-index 0))
+   "TAB 2" (lambda () (interactive) (my-persp-switch-by-index 1))
+   "TAB 3" (lambda () (interactive) (my-persp-switch-by-index 2))
+   "TAB 4" (lambda () (interactive) (my-persp-switch-by-index 3))
+   "TAB 5" (lambda () (interactive) (my-persp-switch-by-index 4))
+   "TAB 6" (lambda () (interactive) (my-persp-switch-by-index 5))
+   "TAB 7" (lambda () (interactive) (my-persp-switch-by-index 6))
+   "TAB 8" (lambda () (interactive) (my-persp-switch-by-index 7))
+   "TAB 9" (lambda () (interactive) (my-persp-switch-by-index 8))
+   "TAB 0" (lambda () (interactive) (my-persp-switch-by-index nil)))
+  :custom
+  (persp-autokill-buffer-on-remove 'kill-weak)
+  (persp-auto-resume-time 0.1)
   (add-to-list 'persp-save-buffer-functions #'my-persp-ignore-none-persp)
-
-  (defun persp-switch-by-index (index)
+  :init
+  (defun my-persp-switch-by-index (index)
     "Switch to perspective by index, if the index is larger than the last perspecive or nil, switch to last perspective"
     (let* ((persps (reverse (butlast (persp-persps))))
            (selected (if index
@@ -602,13 +578,13 @@ If PATH does not exist, abort the evaluation."
     (when (not (persp--buffer-in-persps buffer))
       'skip)))
 
-;; (get-current-persp)
-;; (window-persp-set-p)
-
 (setq global-auto-revert-non-file-buffers t)
 
-(setup (:require paren)
-  (show-paren-mode 1))
+(use-package emacs
+  :init
+  (show-paren-mode))
+
+(use-package aggressive-indent)
 
 (add-hook 'prog-mode-hook #'electric-indent-mode)
 
@@ -616,325 +592,196 @@ If PATH does not exist, abort the evaluation."
 
 (setq-default indent-tabs-mode nil)
 
-(setup (:pkg evil-commentary)
+(use-package evil-commentary
+  :init
   (evil-commentary-mode))
 
 (setq-default show-trailing-whitespace t)
 
-;; (setup (:pkg lispyville)
-;;   (:hook-into lispy-mode)
-;;   (:when-loaded (lispyville-set-key-theme
-;;                  '(slurp/barf-lispy operators c-w additional commentary))))
+(use-package smartparens
+  :custom (sp-highlight-pair-overlay nil)
+  :hook ((prog-mode text-mode) . smartparens-mode)
+  :init
+  (defun indent-between-pair (&rest _ignored)
+    (newline)
+    (indent-according-to-mode)
+    (forward-line -1)
+    (indent-according-to-mode))
+  :config
+  (require 'smartparens-config)
+  (sp-local-pair 'prog-mode "{" nil :post-handlers '((indent-between-pair "RET")))
+  (sp-local-pair 'prog-mode "[" nil :post-handlers '((indent-between-pair "RET")))
+  (sp-local-pair 'prog-mode "(" nil :post-handlers '((indent-between-pair "RET"))))
 
-;; (setup (:pkg lispy)
-;;   (:option lispy-close-quotes-at-end-p t)
-;;   (:hook-into lisp-mode
-;;               emacs-lisp-mode
-;;               ielm-mode
-;;               scheme-mode
-;;               racket-mode
-;;               hy-mode
-;;               lfe-mode
-;;               dune-mode
-;;               clojure-mode
-;;               fennel-mode)
-;;   (:when-loaded
-;;     (lispy-set-key-theme '(lispy c-digits))))
+(use-package evil-cleverparens
+  :hook ((lisp-mode
+          emacs-lisp-mode
+          ielm-mode
+          scheme-mode
+          racket-mode
+          hy-mode
+          lfe-mode
+          dune-mode
+          clojure-mode
+          fennel-mode)
+         . evil-cleverparens-mode))
 
-(setup (:pkg evil-cleverparens)
-  (:hook-into lisp-mode
-              emacs-lisp-mode
-              ielm-mode
-              scheme-mode
-              racket-mode
-              hy-mode
-              lfe-mode
-              dune-mode
-              clojure-mode
-              fennel-mode))
+(use-package origami
+  :hook (yaml-mode . origami-mode))
 
-(add-hook 'prog-mode-hook
-          (lambda ()
-            (electric-pair-local-mode t)))
-
-(add-hook 'cider-repl-mode-hook
-          (lambda ()
-            (electric-pair-local-mode t)))
-
-(setup (:pkg origami)
-  (:hook-into yaml-mode))
-
-(setup (:pkg envrc)
-  (:ignore-buffers "\\*envrc\\*")
+(use-package envrc
+  :init
   (envrc-global-mode))
 
-(setup (:pkg marginalia)
+(use-package marginalia
+  :init
   (marginalia-mode))
 
-(setup savehist
-  (setq history-length 25)
+(use-package emacs
+  :custom
+  (history-length 25)
+  :init
   (savehist-mode 1))
 
-(defun my/minibuffer-backward-kill (arg)
-  "When minibuffer is completing a file name delete up to parent
+(use-package vertico
+  :preface
+  (defun my-minibuffer-backward-kill (arg)
+    "When minibuffer is completing a file name delete up to parent
 folder, otherwise delete a word"
-  (interactive "p")
-  (if minibuffer-completing-file-name
-      (if (string-match-p "/." (minibuffer-contents))
-          (zap-up-to-char (- arg) ?/)
-        (delete-minibuffer-contents))
+    (interactive "p")
+    (if minibuffer-completing-file-name
+        (if (string-match-p "/." (minibuffer-contents))
+            (zap-up-to-char (- arg) ?/)
+          (delete-minibuffer-contents))
       (kill-word (- arg))))
+  :hook
+  (minibuffer-setup . cursor-intangible-mode)
+  :general
+  (:keymaps 'vertico-map
+            "C-j" 'vertico-next
+            "C-k" 'vertico-previous
+            "C-f" 'vertico-exit)
+  (:keymaps 'minibuffer-local-map
+            "C-<backspace>" 'my-minibuffer-backward-kill)
+  :custom
+  (minibuffer-prompt-properties '(read-only t cursor-intangible t face minibuffer-prompt))
+  (vertico-cycle t)
+  :init
+  (vertico-mode))
 
-(setup (:pkg vertico)
-  (vertico-mode)
-  (setq minibuffer-prompt-properties
-        '(read-only t cursor-intangible t face minibuffer-prompt))
-  (add-hook 'minibuffer-setup-hook #'cursor-intangible-mode)
-  (:with-map vertico-map
-    (:bind "C-j" vertico-next
-           "C-k" vertico-previous
-           "C-f" vertico-exit))
-  (:with-map minibuffer-local-map
-    (:bind "C-<backspace>" my/minibuffer-backward-kill))
-  (:option vertico-cycle t))
-
-(setup (:pkg corfu)
-  (:with-map corfu-map
-    (:bind "C-s" corfu-quit
-           [tab] corfu-next
-           [backtab] corfu-previous))
-  (:option corfu-cycle t
-           corfu-auto t
-           corfu-popupinfo-delay '(1.0 . 0.5)
-           corfu-auto-delay 0.1
-           corfu-auto-prefix 2
-           corfu-quit-no-match nil
-           corfu-preselect 'prompt)
-  (:hook-into prog-mode-hook eshell-mode-hook)
-  (:hook #'corfu-popupinfo-mode)
+(use-package corfu
+  :preface
   (defun corfu-enable-in-minibuffer ()
     "Enable Corfu in the minibuffer if `completion-at-point' is bound."
     (when (where-is-internal #'completion-at-point (list (current-local-map)))
       (corfu-mode 1)))
-  (add-hook 'minibuffer-setup-hook #'corfu-enable-in-minibuffer))
+  :hook (((prog-mode eshell-mode) . corfu-mode)
+         (corfu-mode . corfu-popupinfo-mode)
+         (minibuffer-setup . corfu-enable-in-minibuffer))
+  :custom
+  (corfu-cycle t)
+  (corfu-auto t)
+  (corfu-popupinfo-delay '(1.0 . 0.5))
+  (corfu-auto-delay 0)
+  (corfu-auto-prefix 2)
+  (corfu-quit-no-match nil)
+  (corfu-preselect 'prompt)
+  :general
+  (:keymaps 'corfu-map
+            "C-s" 'corfu-quit
+            "<tab>" 'corfu-next
+            "<backtab>" 'corfu-previous))
 
-(setup (:pkg cape)
-  (:require cape)
+(use-package cape
+  :init
   (add-to-list 'completion-at-point-functions #'cape-file))
 
-(setup (:pkg orderless)
-  (require 'orderless)
-  (setq orderless-matching-styles '(orderless-literal orderless-flex orderless-regexp)
-        completion-styles '(orderless basic)
-        completion-category-defaults nil
-        completion-category-overrides '((file (styles . (partial-completion))))))
+(use-package orderless
+  :custom
+  (orderless-matching-styles '(orderless-literal orderless-flex orderless-regexp))
+  (completion-styles '(orderless basic))
+  (completion-category-defaults nil)
+  (completion-category-overrides '((file (styles . (partial-completion))))))
 
-(setup (:pkg consult)
-  (:require consult)
-  (:leader
-    "SPC" '(my/switch-buffer :which-key "Buffers")
-    "/" '(consult-ripgrep :which-key "Ripgrep")
-    "bb" '(my/project-buffer :which-key "Project Buffers")
-    "bB" '(consult-buffer :which-key "All Buffers"))
-
-  (:with-map minibuffer-local-map
-    (:bind "C-r" consult-history))
-
-  (defun my/get-project-root ()
-    (when (fboundp 'projectile-project-root)
-      (projectile-project-root)))
-
-  (:load-after persp-mode
+(use-package consult
+  :after persp-mode
+  :init
+  (with-eval-after-load 'consult
     (defun my/switch-buffer ()
       (interactive)
       (with-persp-buffer-list
        nil
        (let ((consult-buffer-filter (append consult-buffer-filter ignored-buffers)))
-         (consult-buffer))))
+         (consult-buffer)))))
+  :general
+  (:keymaps 'minibuffer-local-map
+            "C-r" 'consult-history)
+  (general-leader
+    "SPC" '(my/switch-buffer :which-key "Buffers")
+    "/" '(consult-ripgrep :which-key "Ripgrep")
+    "bB" '(consult-buffer :which-key "All Buffers")))
 
-    (defun my/project-buffer ()
-      (interactive)
-      (let ((consult-buffer-filter (append consult-buffer-filter ignored-buffers)))
-        (consult-project-buffer))))
+(use-package sly)
 
-  (:option consult-project-root-function #'my/get-project-root
-           completion-in-region-function #'consult-completion-in-region))
+(use-package cider
+  :hook (clojure-mode . cider-mode)
+  :custom
+  ;; (cider-clojure-cli-global-options "-Adev")
+  (cider-repl-display-help-banner nil)
+  (cider-eval-result-duration 'change)
+  (cider-repl-pop-to-buffer-on-connect 'display-only)
+  (cider-xref-fn-depth 90)
+  (cider-offer-to-open-cljs-app-in-browser nil)
+  :general
+  (general-local-leader
+    :keymaps 'clojure-mode-map
+    "e" '(nil :which-key "Eval")
+    "eb" '(cider-eval-buffer :which-key "Eval buffer")
+    "ed" '(cider-debug-defun-at-point :which-key "Eval debug")
+    "'" '(cider-connect-clj :which-key "Connect clj")
+    "\"" '(cider-connect-cljs :which-key "Connect cljs")
+    "j" '(cider-jack-in-clj :which-key "Jack-in clj")
+    "J" '(cider-jack-in-cljs :which-key "Jack-in cljs")))
 
-(setup (:pkg sly))
+(use-package nix-mode)
 
-(setup (:pkg cider)
-  (:option cider-clojure-cli-global-options "-Adev"
-           cider-repl-display-help-banner nil
-           cider-eval-result-duration 'change
-           cider-repl-pop-to-buffer-on-connect 'display-only
-           cider-xref-fn-depth 90
-           cider-offer-to-open-cljs-app-in-browser nil)
-  (:ignore-buffers "\\*cider-repl.*" "\\*nrepl-server .*")
-  (:display-rule "\\*cider-repl.*"
-                 (display-buffer-in-side-window)
-                 (window-height  . 0.20)
-                 (preserve-size . (nil . t)))
-  (:with-map clojure-mode-map
-    (:local-leader
-      "e" '(nil :which-key "Eval")
-      "eb" '(cider-eval-buffer :which-key "Eval buffer")
-      "ed" '(cider-debug-defun-at-point :which-key "Eval debug")
-      "'" '(cider-connect-clj :which-key "Connect clj")
-      "\"" '(cider-connect-cljs :which-key "Connect cljs")
-      "j" '(cider-jack-in-clj :which-key "Jack-in clj")
-      "J" '(cider-jack-in-cljs :which-key "Jack-in cljs")))
-  (add-to-list 'completion-category-defaults '(cider (styles basic)))
-  (add-hook 'clojure-mode-hook #'cider-mode)
-  (autoload 'cider--make-result-overlay "cider-overlays")
+(use-package lua-mode)
 
-  ;; Cider eval overlays in elisp
-  (defun my/eval-overlay (value point)
-    (cider--make-result-overlay (format "%S" value)
-      :where point
-      :duration 'change)
-    value)
+(use-package haskell-mode)
 
-  (advice-add 'eval-region :around
-              (lambda (f beg end &rest r)
-                (my/eval-overlay
-                 (apply f beg end r)
-                 end)))
+(use-package scala-mode)
 
-  (advice-add 'eval-last-sexp :filter-return
-              (lambda (r)
-                (my/eval-overlay r (point))))
+(use-package go-mode)
 
-  (advice-add 'eval-defun :filter-return
-              (lambda (r)
-                (my/eval-overlay
-                 r
-                 (save-excursion
-                   (end-of-defun)
-                   (point))))))
+(use-package typescript-mode
+  :custom
+  (typescript-indent-level 2))
 
-;; (setup (:pkg nix-mode)
-;;   (:file-match "*.nix"))
+(use-package yaml-mode)
 
-
-(setup (:pkg nix-mode))
-
-;; (add-hook 'prog-mode-hook
-;;           (lambda ()
-;;             (add-hook 'before-save-hook 'eglot-format nil t)))
-
-(with-eval-after-load 'eglot
-  (dolist (mode '((nix-mode . ("nixd"))))
-    (add-to-list 'eglot-server-programs mode)))
-
-(setup (:pkg lua-mode))
-
-(setup (:pkg haskell-mode))
-
-(setup (:pkg scala-mode))
-
-(setup (:pkg go-mode))
-
-(setup (:pkg moonscript))
-
-(setup (:pkg typescript-mode)
-  (:option typescript-indent-level 2))
-
-(setup (:pkg yaml-mode))
-
-(setup (:pkg emms)
-  (:leader
-    "o"  '(:ignore t :which-key "Open")
-    "om" '(emms-smart-browse :which-key "EMMS"))
-  (defun my-emms-browser-format-line (bdata &optional target)
-    "Return a propertized string to be inserted in the buffer."
-    (unless target
-      (setq target 'browser))
-    (let* ((name (or (emms-browser-bdata-name bdata) "misc"))
-           (level (emms-browser-bdata-level bdata))
-           (type (emms-browser-bdata-type bdata))
-           (indent (emms-browser-make-indent level))
-           (track (emms-browser-bdata-first-track bdata))
-           (path (concat emms-source-file-default-directory "/"
-                         (emms-track-get track 'name)))
-           (face (emms-browser-get-face bdata))
-           (format (emms-browser-get-format bdata target))
-           (props (list 'emms-browser-bdata bdata))
-           (format-choices
-            `(("i" . ,indent)
-              ("n" . ,name)
-              ("y" . ,(emms-track-get-year track))
-              ("A" . ,(emms-track-get track 'info-album))
-              ("a" . ,(emms-track-get track 'info-artist))
-              ("C" . ,(emms-track-get track 'info-composer))
-              ("p" . ,(emms-track-get track 'info-performer))
-              ("t" . ,(emms-track-get track 'info-title))
-              ("D" . ,(emms-browser-disc-number track))
-              ("T" . ,(emms-browser-track-number track))
-              ("d" . ,(emms-browser-track-duration track))))
-           str)
-      (when (equal type 'info-album)
-        (setq format-choices (append format-choices
-                                     `(("cS" . ,(emms-browser-get-cover-str path 'small))
-                                       ("cM" . ,(emms-browser-get-cover-str path 'medium))
-                                       ("cL" . ,(emms-browser-get-cover-str path 'large))))))
-
-      (when (functionp format)
-        (setq format (funcall format bdata format-choices)))
-
-      (setq str
-            (with-temp-buffer
-              (insert format)
-              (goto-char (point-min))
-              (let ((start (point-min)))
-                ;; jump over any image
-                (when (re-search-forward "%c[SML]" nil t)
-                  (setq start (point)))
-                ;; jump over the indent
-                (when (re-search-forward "%i" nil t)
-                  (setq start (point)))
-                (add-text-properties start (point-max)
-                                     (list 'face face)))
-              (buffer-string)))
-
-      (setq str (emms-browser-format-spec str format-choices))
-
-      ;; give tracks a 'boost' if they're not top-level
-      ;; (covers take up an extra space)
-      (when (and (eq type 'info-title)
-                 (not (string= indent "")))
-        (setq str (concat " " str)))
-
-      ;; if we're in playlist mode, add a track
-      (when (and (eq target 'playlist)
-                 (eq type 'info-title))
-        (setq props
-              (append props `(emms-track ,track))))
-
-      ;; add properties to the whole string
-      (add-text-properties 0 (length str) props str)
-      str))
+(use-package emms
+  :custom
+  (emms-player-list '(emms-player-mpd))
+  (emms-info-functions '(emms-info-mpd))
+  (emms-source-file-default-directory "/mnt/extern/music")
+  (emms-player-mpd-music-directory emms-source-file-default-directory)
+  (emms-browser-covers #'emms-browser-cache-thumbnail-async)
+  :config
   (require 'emms-setup)
   (require 'emms-player-mpd)
-  (emms-all)
-  (setq emms-player-list '(emms-player-mpd))
-  (setq emms-info-functions '(emms-info-mpd))
-  (setq emms-browser-covers #'emms-browser-cache-thumbnail-async)
-  (setq emms-browser-thumbnail-small-size 128)
-  (setq emms-browser-thumbnail-medium-size 192)
-  ;; (emms-mode-line-disable)
-  (setq emms-source-file-default-directory "/mnt/extern/music/")
-  (advice-add 'emms-browser-format-line :override #'my-emms-browser-format-line))
+  (emms-all))
 
-(setup (:pkg magit)
-  (:option magit-display-buffer-function #'my/magit-buffer-function)
-  (:option transient-display-buffer-action '(display-buffer-below-selected))
-  (:ignore-buffers "^magit: .*")
-  (:leader
+(use-package magit
+  :hook (git-commit-mode . evil-insert-state)
+  :custom
+  (magit-display-buffer-function #'my-magit-buffer-function)
+  (transient-display-buffer-action '(display-buffer-below-selected))
+  :general
+  (general-leader
     "g" '(:ignore t :which-key "Git")
     "gg" '(magit :which-key "Magit"))
-    "gc" '(magit-smerge-keep-current :which-key "Keep current")
-  (add-hook 'git-commit-mode-hook 'evil-insert-state)
-  (defun my/magit-buffer-function (buffer)
+  :config
+  (defun my-magit-buffer-function (buffer)
     (let ((buffer-mode (buffer-local-value 'major-mode buffer)))
       (display-buffer
        buffer (cond
@@ -962,85 +809,61 @@ folder, otherwise delete a word"
                 '(display-buffer-same-window))
                nil)))))
 
-(setup (:pkg restclient)
+(use-package restclient
+  :general
+  (general-leader
+    "o r" '(restclient-buffer :which-key "Open restclient buffer"))
+  :init
   (defun restclient-buffer ()
     (interactive)
     (switch-to-buffer "restclient.http")
-    (restclient-mode))
-  (:leader
-    "o r" '(restclient-buffer :which-key "Open restclient buffer")))
+    (restclient-mode)))
 
-(setup (:pkg gptel)
-  (:option gptel-default-mode 'org-mode)
-  (require 'my-secrets nil 't)
-  (:load-after my-secrets
-    (:option
-     gptel-backend (gptel-make-gemini
-                    "Gemini"
-                    :key secrets-gemini-api-key
-                    :stream t))))
-
-(setup (:pkg eglot)
-  (:ignore-buffers "^\\*EGLOT .*")
-  (:local-leader
+(use-package eglot
+  :hook (((clojure-mode
+           clojurescript-mode
+           go-mode
+           c-mode)
+          .
+          eglot-ensure)
+         (eglot-managed-mode . my-eglot-lower-capf-prio))
+  :custom
+  (eglot-confirm-server-initiated-edits nil)
+  (max-mini-window-height 2)
+  :general
+  (general-local-leader
+    :keymaps 'eglot-mode-map
     "c" '(nil :which-key "Eglot")
     "cc" '(eglot-code-actions :which-key "Code Actions")
     "cr" '(eglot-rename :which-key "Rename"))
-  (:option eglot-confirm-server-initiated-edits nil
-           max-mini-window-height 2)
-  (:with-mode (clojure-mode clojurescript-mode go-mode scala-mode c-mode)
-    (:hook #'eglot-ensure))
-  (:with-mode eglot-managed-mode
-    (:hook (lambda ()
-             "Make the eglot capf have less priority"
-             (when (boundp 'cider-mode)
-               (when cider-mode
-                 (remove-from-list completion-at-point-functions t)
-                 (remove-from-list completion-at-point-functions #'eglot-completion-at-point)
-                 (add-to-list 'completion-at-point-functions #'eglot-completion-at-point t)
-                 (add-to-list 'completion-at-point-functions t t)))))))
+  :init
+  (defun my-eglot-lower-capf-prio ()
+    "Make the eglot capf have lower priority"
+    (when (boundp 'cider-mode)
+      (when cider-mode
+        (remove-from-list completion-at-point-functions t)
+        (remove-from-list completion-at-point-functions #'eglot-completion-at-point)
+        (add-to-list 'completion-at-point-functions #'eglot-completion-at-point t)
+        (add-to-list 'completion-at-point-functions t t)))))
 
-;; (setup (:pkg lsp-mode)
-;;   (:option
-;;    ;; lsp-disabled-clients '(semgrep-ls)
-;;    ;; lsp-go-server-wrapper-function #'identity
-;;    )
-;;   (:with-mode (go-mode clojure-mode)
-;;     (:hook #'lsp-deferred)))
+(use-package sideline-flymake
+  :custom
+  (sideline-flymake-display-mode 'line))
 
-(setup (:pkg sideline)
-  (:option sideline-backends-right '(sideline-flymake))
-  (:hook-into flymake-mode))
+(use-package sideline
+  :hook (flymake-mode . sideline-mode)
+  :custom
+  (sideline-backends-right '(sideline-flymake)))
 
-(setup (:pkg sideline-flymake)
-  (:option sideline-flymake-display-mode 'line))
+(use-package yasnippet
+  :hook (prog-mode . yas-minor-mode))
 
-(setup (:pkg yasnippet)
-  (:with-mode (prog-mode)
-    (:hook #'yas-minor-mode)))
+(use-package my-eshell-toggle
+  :straight nil
+  :general
+  (general-leader
+    "o o" '(my-eshell-toggle :which-key "Toggle eshell")))
 
-;; (setup (:pkg eshell-toggle)
-;;   (:leader
-;;     "o o" '(eshell-toggle :which-key "Toggle Eshell"))
-;;   (:option eshell-toggle-size-fraction 3
-;;            eshell-toggle-run-command nil))
-
-(setup (:require my-eshell-toggle)
-  (:display-rule "\\*eshell - .*"
-                 (display-buffer-in-side-window)
-                 (window-height . 0.2))
-  (:leader
-    "o o" '(my-eshell-toggle :which-key "Toggle eshell"))
-
-  ;; (:with-map eshell-mode-map
-  ;;   (:bind (kbd "C-l") eshell-clear-buffer))
-
-  (defun eshell-clear-buffer ()
-    "Clear terminal"
-    (interactive)
-    (let ((inhibit-read-only t))
-      (erase-buffer)
-      (eshell-send-input))))
-
-(setup (:pkg jarchive)
+(use-package jarchive
+  :init
   (jarchive-setup))
