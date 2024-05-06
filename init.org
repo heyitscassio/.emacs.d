@@ -109,6 +109,37 @@
   (setq straight-use-package-by-default t)
 #+end_src
 
+* Paths
+
+#+begin_src emacs-lisp
+  ;; Change the user-emacs-directory to keep unwanted things out of ~/.emacs.d
+  (setq user-emacs-directory (expand-file-name "~/.cache/emacs/")
+        url-history-file (expand-file-name "url/history" user-emacs-directory))
+
+  ;; Use no-littering to automatically set common paths to the new user-emacs-directory
+  (use-package no-littering
+    :init
+    (require 'no-littering))
+
+  ;; Keep customization settings in a temporary file (thanks Ambrevar!)
+  (setq custom-file
+        (if (boundp 'server-socket-dir)
+            (expand-file-name "custom.el" server-socket-dir)
+          (expand-file-name (format "emacs-custom-%s.el" (user-uid)) temporary-file-directory)))
+  (load custom-file t)
+
+  ; Backup directory
+  (setq backup-directory-alist `((".*" . ,(expand-file-name "backups" user-emacs-directory)))
+        auto-save-file-name-transforms `((".*" ,(expand-file-name "backups" user-emacs-directory) t))
+        create-lockfiles nil
+        backup-by-copying t
+        version-control t
+        delete-old-versions t
+        vc-make-backup-files t
+        kept-old-versions 10
+        kept-new-versions 10)
+#+end_src
+
 * Custom functions
 ** Open Music player
 
@@ -233,8 +264,10 @@
   ;;   (evil-goggles-use-diff-faces))
 
   (use-package evil-goggles
+    :custom
+    (evil-goggles-enable-delete nil)
+    (evil-goggles-enable-change nil)
     :config
-    ;; (setq evil-goggles-commands nil)
     (evil-goggles-mode)
     (evil-goggles-use-diff-faces))
 #+end_src
@@ -476,37 +509,6 @@
   (advice-add 'enable-theme :after #'run-after-enable-theme-hook)
 #+end_src
 
-* Paths
-
-#+begin_src emacs-lisp
-  ;; Change the user-emacs-directory to keep unwanted things out of ~/.emacs.d
-  (setq user-emacs-directory (expand-file-name "~/.cache/emacs/")
-        url-history-file (expand-file-name "url/history" user-emacs-directory))
-
-  ;; Use no-littering to automatically set common paths to the new user-emacs-directory
-  (use-package no-littering
-    :init
-    (require 'no-littering))
-
-  ;; Keep customization settings in a temporary file (thanks Ambrevar!)
-  (setq custom-file
-        (if (boundp 'server-socket-dir)
-            (expand-file-name "custom.el" server-socket-dir)
-          (expand-file-name (format "emacs-custom-%s.el" (user-uid)) temporary-file-directory)))
-  (load custom-file t)
-
-  ; Backup directory
-  (setq backup-directory-alist `((".*" . ,(expand-file-name "backups" user-emacs-directory)))
-        auto-save-file-name-transforms `((".*" ,(expand-file-name "backups" user-emacs-directory) t))
-        create-lockfiles nil
-        backup-by-copying t
-        version-control t
-        delete-old-versions t
-        vc-make-backup-files t
-        kept-old-versions 10
-        kept-new-versions 10)
-#+end_src
-
 * Theme
 ** Fonts
 
@@ -716,29 +718,17 @@
   (setq-default show-trailing-whitespace t)
 #+end_src
 
-** Smartparens
+** Pairs
 
 #+begin_src emacs-lisp
-  (use-package smartparens
-    :custom (sp-highlight-pair-overlay nil)
-    :hook ((prog-mode text-mode) . smartparens-mode)
-    :init
-    (defun indent-between-pair (&rest _ignored)
-      (newline)
-      (indent-according-to-mode)
-      (forward-line -1)
-      (indent-according-to-mode))
-    :config
-    (require 'smartparens-config)
-    (sp-local-pair 'prog-mode "{" nil :post-handlers '((indent-between-pair "RET")))
-    (sp-local-pair 'prog-mode "[" nil :post-handlers '((indent-between-pair "RET")))
-    (sp-local-pair 'prog-mode "(" nil :post-handlers '((indent-between-pair "RET"))))
+  (use-package emacs
+    :hook (prog-mode . electric-pair-local-mode))
 #+end_src
 
-** Cleverparens
+** Lispy
 
 #+begin_src emacs-lisp
-  (use-package evil-cleverparens
+  (use-package lispyville
     :hook ((lisp-mode
             emacs-lisp-mode
             ielm-mode
@@ -749,7 +739,9 @@
             dune-mode
             clojure-mode
             fennel-mode)
-           . evil-cleverparens-mode))
+           . lispyville-mode)
+    :config
+    (lispyville-set-key-theme '(operators slurp/barf-lispy c-w additional)))
 #+end_src
 
 ** Code Folding
