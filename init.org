@@ -130,7 +130,7 @@
 
   ; Backup directory
   (setq backup-directory-alist `((".*" . ,(expand-file-name "backups" user-emacs-directory)))
-        auto-save-file-name-transforms `((".*" ,(expand-file-name "backups" user-emacs-directory) t))
+        auto-save-file-name-transforms `((".*" ,(expand-file-name "autosave/"  user-emacs-directory) t))
         create-lockfiles nil
         backup-by-copying t
         version-control t
@@ -181,6 +181,7 @@
     (global-undo-tree-mode))
 
   (use-package evil
+    :hook (emacs-lisp-mode . (lambda () (setq evil-lookup-func #'my-elisp-lookup)))
     :custom
     (evil-want-integration t)
     (evil-want-keybinding nil)
@@ -191,6 +192,12 @@
     (evil-echo-state nil)
     (evil-auto-indent t)
     :init
+    (defun my-elisp-lookup ()
+      (interactive)
+      (let ((sym (symbol-at-point)))
+        (if sym
+            (describe-symbol (symbol-at-point))
+          (message "Invalid symbol"))))
     (evil-mode))
 #+end_src
 
@@ -206,68 +213,62 @@
 *** Evil Goggles
 
 #+begin_src emacs-lisp
-  ;; (setup (:pkg evil-goggles)
-  ;;   (:when-loaded
-  ;;     (:option evil-goggles-enable-delete t
-  ;;              evil-goggles-enable-change t
-  ;;              evil-goggles--commands
-  ;;              (append evil-goggles--commands
-  ;;                      '((evil-magit-yank-whole-line
-  ;;                         :face evil-goggles-yank-face
-  ;;                         :switch evil-goggles-enable-yank
-  ;;                         :advice evil-goggles--generic-async-advice)
-  ;;                        (+evil:yank-unindented
-  ;;                         :face evil-goggles-yank-face
-  ;;                         :switch evil-goggles-enable-yank
-  ;;                         :advice evil-goggles--generic-async-advice)
-  ;;                        (+eval:region
-  ;;                         :face evil-goggles-yank-face
-  ;;                         :switch evil-goggles-enable-yank
-  ;;                         :advice evil-goggles--generic-async-advice)
-  ;;                        (lispyville-delete
-  ;;                         :face evil-goggles-delete-face
-  ;;                         :switch evil-goggles-enable-delete
-  ;;                         :advice evil-goggles--generic-blocking-advice)
-  ;;                        (lispyville-delete-line
-  ;;                         :face evil-goggles-delete-face
-  ;;                         :switch evil-goggles-enable-delete
-  ;;                         :advice evil-goggles--delete-line-advice)
-  ;;                        (lispyville-yank
-  ;;                         :face evil-goggles-yank-face
-  ;;                         :switch evil-goggles-enable-yank
-  ;;                         :advice evil-goggles--generic-async-advice)
-  ;;                        (lispyville-yank-line
-  ;;                         :face evil-goggles-yank-face
-  ;;                         :switch evil-goggles-enable-yank
-  ;;                         :advice evil-goggles--generic-async-advice)
-  ;;                        (lispyville-change
-  ;;                         :face evil-goggles-change-face
-  ;;                         :switch evil-goggles-enable-change
-  ;;                         :advice evil-goggles--generic-blocking-advice)
-  ;;                        (lispyville-change-line
-  ;;                         :face evil-goggles-change-face
-  ;;                         :switch evil-goggles-enable-change
-  ;;                         :advice evil-goggles--generic-blocking-advice)
-  ;;                        (lispyville-change-whole-line
-  ;;                         :face evil-goggles-change-face
-  ;;                         :switch evil-goggles-enable-change
-  ;;                         :advice evil-goggles--generic-blocking-advice)
-  ;;                        (lispyville-indent
-  ;;                         :face evil-goggles-indent-face
-  ;;                         :switch evil-goggles-enable-indent
-  ;;                         :advice evil-goggles--generic-async-advice)
-  ;;                        (lispyville-join
-  ;;                         :face evil-goggles-join-face
-  ;;                         :switch evil-goggles-enable-join
-  ;;                         :advice evil-goggles--join-advice)))))
-  ;;   (evil-goggles-mode)
-  ;;   (evil-goggles-use-diff-faces))
-
   (use-package evil-goggles
     :custom
     (evil-goggles-enable-delete nil)
     (evil-goggles-enable-change nil)
     :config
+    (setq evil-goggles--commands
+          (append evil-goggles--commands
+                  '((evil-magit-yank-whole-line
+                     :face evil-goggles-yank-face
+                     :switch evil-goggles-enable-yank
+                     :advice evil-goggles--generic-async-advice)
+                    (+evil:yank-unindented
+                     :face evil-goggles-yank-face
+                     :switch evil-goggles-enable-yank
+                     :advice evil-goggles--generic-async-advice)
+                    (+eval:region
+                     :face evil-goggles-yank-face
+                     :switch evil-goggles-enable-yank
+                     :advice evil-goggles--generic-async-advice)
+                    (lispyville-delete
+                     :face evil-goggles-delete-face
+                     :switch evil-goggles-enable-delete
+                     :advice evil-goggles--generic-blocking-advice)
+                    (lispyville-delete-line
+                     :face evil-goggles-delete-face
+                     :switch evil-goggles-enable-delete
+                     :advice evil-goggles--delete-line-advice)
+                    (lispyville-yank
+                     :face evil-goggles-yank-face
+                     :switch evil-goggles-enable-yank
+                     :advice evil-goggles--generic-async-advice)
+                    (lispyville-yank-line
+                     :face evil-goggles-yank-face
+                     :switch evil-goggles-enable-yank
+                     :advice evil-goggles--generic-async-advice)
+                    (lispyville-change
+                     :face evil-goggles-change-face
+                     :switch evil-goggles-enable-change
+                     :advice evil-goggles--generic-blocking-advice)
+                    (lispyville-change-line
+                     :face evil-goggles-change-face
+                     :switch evil-goggles-enable-change
+                     :advice evil-goggles--generic-blocking-advice)
+                    (lispyville-change-whole-line
+                     :face evil-goggles-change-face
+                     :switch evil-goggles-enable-change
+                     :advice evil-goggles--generic-blocking-advice)
+                    (lispyville-indent
+                     :face evil-goggles-indent-face
+                     :switch evil-goggles-enable-indent
+                     :advice evil-goggles--generic-async-advice)
+                    (lispyville-join
+                     :face evil-goggles-join-face
+                     :switch evil-goggles-enable-join
+                     :advice evil-goggles--join-advice))))
+    :init
     (evil-goggles-mode)
     (evil-goggles-use-diff-faces))
 #+end_src
@@ -330,7 +331,8 @@
       "o" '(nil :which-key "Apps")
       "p" '(nil :which-key "Project")
       "pf" '(project-find-file :which-key "Project find file")
-      "qK" '(save-buffers-kill-emacs :which-key "Apps")))
+      "qK" '(save-buffers-kill-emacs :which-key "Apps")
+      "s" '(nil :which-key "Search")))
 #+end_src
 
 ** Surround
@@ -370,6 +372,8 @@
     :hook ((magit-pre-refresh . diff-hl-magit-pre-refresh)
            (magit-post-refresh . diff-hl-magit-post-refresh))
     :init
+    (define-fringe-bitmap 'my-diff-hl-bitmap [] 5 1 '(top t))
+    (setq diff-hl-fringe-bmp-function (lambda (type pos) 'my-diff-hl-bitmap))
     (global-diff-hl-mode))
 #+end_src
 
@@ -435,6 +439,8 @@
   (defalias 'yes-or-no-p 'y-or-n-p)
   (setq frame-resize-pixelwise 't)
   (save-place-mode)
+  ;; Hide useless commands in M-x
+  (setq read-extended-command-predicate #'command-completion-default-include-p)
 #+end_src
 
 ** Pulsar
@@ -533,8 +539,16 @@
     (modus-themes-italic-constructs t)
     (modus-themes-org-blocks 'gray-background)
     :config
-    (setq modus-themes-common-palette-overrides modus-themes-preset-overrides-intense)
-    (modus-themes-select 'modus-vivendi))
+    (let ((modus-palette (append (seq-filter
+                                  (lambda (x)
+                                    (let ((selector (car x)))
+                                      (cond
+                                       ((eq selector 'fringe) nil)
+                                       (t 't))))
+                                  modus-themes-preset-overrides-intense)
+                                 '((fringe bg-dim)))))
+      (setq modus-themes-common-palette-overrides modus-palette))
+    (modus-themes-select 'modus-operandi))
 #+end_src
 
 ** Pretify symbols
@@ -559,7 +573,6 @@
      "dt" '(org-time-stamp :which-key "org-timestamp")
      "dT" '(org-time-stamp-inactive :which-key "org-timestamp"))
     :custom
-    (org-ellipsis " ▾")
     (org-hide-emphasis-markers t)
     (org-src-fontify-natively t)
     (org-fontify-quote-and-verse-blocks t)
@@ -741,7 +754,7 @@
             fennel-mode)
            . lispyville-mode)
     :config
-    (lispyville-set-key-theme '(operators slurp/barf-lispy c-w additional)))
+    (lispyville-set-key-theme '(operators slurp/barf-lispy c-w additional text-objects commentary)))
 #+end_src
 
 ** Code Folding
@@ -749,6 +762,25 @@
 #+begin_src emacs-lisp
   (use-package origami
     :hook (yaml-mode . origami-mode))
+#+end_src
+
+** Docs
+*** Eldoc box
+
+#+begin_src emacs-lisp
+  (use-package eldoc-box
+    :after eglot
+    :init
+    (general-def
+      :keymaps 'eglot-mode-map
+      :modes 'normal
+      "K" 'eldoc-box-help-at-point)
+    (general-def
+      :keymaps 'eldoc-mode-map
+      :modes 'normal
+      "K" 'eldoc-box-help-at-point)
+    ;; (advice-add 'eldoc-doc-buffer :override 'eldoc-box-help-at-point)
+    )
 #+end_src
 
 * Env
@@ -824,10 +856,11 @@
     (corfu-cycle t)
     (corfu-auto t)
     (corfu-popupinfo-delay '(1.0 . 0.5))
-    (corfu-auto-delay 0)
+    (corfu-auto-delay 0.2)
     (corfu-auto-prefix 2)
-    (corfu-quit-no-match nil)
-    (corfu-preselect 'prompt)
+    (corfu-quit-no-match 'separator)
+    (corfu-preselect 'valid)
+    (corfu-preview-current 'instert)
     :general
     (:keymaps 'corfu-map
               "C-s" 'corfu-quit
@@ -847,10 +880,18 @@
 #+begin_src emacs-lisp
   (use-package orderless
     :custom
-    (orderless-matching-styles '(orderless-literal orderless-flex orderless-regexp))
+    (orderless-matching-styles '(orderless-initialism orderless-flex))
     (completion-styles '(orderless basic))
-    (completion-category-defaults nil)
-    (completion-category-overrides '((file (styles . (partial-completion))))))
+    ;; (completion-category-defaults nil)
+    (completion-category-overrides '((file (styles . (partial-completion)))))
+    :config
+    (defun orderless-fast-dispatch (word index total)
+      (and (= index 0) (= total 1) (length< word 4)
+           (cons 'orderless-literal-prefix word)))
+
+    (orderless-define-completion-style orderless-fast
+      (orderless-style-dispatchers '())
+      (orderless-matching-styles '(orderless-flex orderless-regexp))))
 #+end_src
 
 ** Consult
@@ -858,24 +899,61 @@
 #+begin_src emacs-lisp
   (use-package consult
     :after persp-mode
-    :init
-    (with-eval-after-load 'consult
-      (defun my/switch-buffer ()
-        (interactive)
-        (with-persp-buffer-list
-         nil
-         (let ((consult-buffer-filter (append consult-buffer-filter ignored-buffers)))
-           (consult-buffer)))))
+    :config
+    (consult-customize consult--source-buffer :hidden t :default nil)
+
+    (defvar consult--source-perspective
+      (list :name     "Persp Buffers"
+            :narrow   ?s
+            :category 'buffer
+            :state    #'consult--buffer-state
+            :default  t
+            :items    (lambda () (seq-map #'buffer-name (persp-buffer-list)))))
+
+    (push consult--source-perspective consult-buffer-sources)
     :general
     (:keymaps 'minibuffer-local-map
-              "C-r" 'consult-history)
+     "C-r" 'consult-history)
     (general-leader
-      "SPC" '(my/switch-buffer :which-key "Buffers")
       "/" '(consult-ripgrep :which-key "Ripgrep")
-      "bB" '(consult-buffer :which-key "All Buffers")))
+      "SPC" '(consult-buffer :which-key "All Buffers")
+      "si" '(consult-imenu :which-key "Imenu")))
+
+  (use-package consult-project-extra
+    :after consult
+    :demand t
+    :config
+    (consult-customize
+     consult-project-extra--source-file
+     :hidden t
+     :default nil
+     :narrow ?f)
+    (push consult-project-extra--source-file consult-buffer-sources))
 #+end_src
 
 * Languages
+** Python
+
+#+begin_src emacs-lisp
+#+end_src
+
+** Markdown
+
+#+begin_src emacs-lisp
+  (use-package markdown-mode)
+#+end_src
+
+** Rust
+
+#+begin_src emacs-lisp
+  (use-package rust-mode)
+#+end_src
+
+** Yuck
+
+#+begin_src emacs-lisp
+  (use-package yuck-mode)
+#+end_src
 
 ** Common Lisp
 
@@ -885,10 +963,14 @@
 
 ** Clojure
 #+begin_src emacs-lisp
+  (use-package clojure-mode)
+
   (use-package cider
+    :straight (cider :host nil :type git :repo "git@github.com:toniz4/cider.git")
     :hook (clojure-mode . cider-mode)
     :custom
-    ;; (cider-clojure-cli-global-options "-Adev")
+    (cider-clojure-cli-global-options "-Adev")
+    (cider-completion-annotations-include-ns 'always)
     (cider-repl-display-help-banner nil)
     (cider-eval-result-duration 'change)
     (cider-repl-pop-to-buffer-on-connect 'display-only)
@@ -903,7 +985,12 @@
       "'" '(cider-connect-clj :which-key "Connect clj")
       "\"" '(cider-connect-cljs :which-key "Connect cljs")
       "j" '(cider-jack-in-clj :which-key "Jack-in clj")
-      "J" '(cider-jack-in-cljs :which-key "Jack-in cljs")))
+      "J" '(cider-jack-in-cljs :which-key "Jack-in cljs"))
+    :config
+    (add-to-list 'display-buffer-alist '("\\*cider-repl.*"
+                                         (display-buffer-in-side-window)
+                                         (window-height  . 0.20)
+                                         (preserve-size . (nil . t)))))
 #+end_src
 
 ** Nix
@@ -950,10 +1037,28 @@
   (use-package yaml-mode)
 #+end_src
 * Programs
+** pdf-tools
+
+#+begin_src emacs-lisp
+  (use-package pdf-tools
+    :mode ("\\.pdf\\'" . pdf-view-mode)
+    :custom
+    (pdf-view-display-size 'fit-width)
+    (pdf-view-use-scaling t)
+    (pdf-view-use-imagemagick nil))
+
+  (use-package pdf-view-restore
+    :after pdf-tools
+    :hook (pdf-view-mode . pdf-view-restore-mode))
+#+end_src
+
 ** EMMS
 
 #+begin_src emacs-lisp
   (use-package emms
+    :general
+    (general-leader
+      "o m" 'emms-smart-browse)
     :custom
     (emms-player-list '(emms-player-mpd))
     (emms-info-functions '(emms-info-mpd))
@@ -974,11 +1079,12 @@
     :custom
     (magit-display-buffer-function #'my-magit-buffer-function)
     (transient-display-buffer-action '(display-buffer-below-selected))
+    (magit-diff-refine-hunk 'all)
     :general
     (general-leader
       "g" '(:ignore t :which-key "Git")
       "gg" '(magit :which-key "Magit"))
-    :config
+    :init
     (defun my-magit-buffer-function (buffer)
       (let ((buffer-mode (buffer-local-value 'major-mode buffer)))
         (display-buffer
@@ -1044,6 +1150,11 @@
       "cc" '(eglot-code-actions :which-key "Code Actions")
       "cr" '(eglot-rename :which-key "Rename"))
     :init
+    (add-hook 'go-mode-hook (lambda ()
+                              (add-hook 'before-save-hook
+                                        (lambda ()
+                                          (eglot-code-action-organize-imports (point-min)))
+                                        nil t)))
     (defun my-eglot-lower-capf-prio ()
       "Make the eglot capf have lower priority"
       (when (boundp 'cider-mode)
@@ -1077,11 +1188,25 @@
 * Eshell
 
 #+begin_src emacs-lisp
-  (use-package my-eshell-toggle
+  ;; (use-package my-eshell-toggle
+  ;;   :straight nil
+  ;;   :general
+  ;;   (general-leader
+  ;;     "o o" '(my-eshell-toggle :which-key "Toggle eshell")))
+
+  ;; (use-package eat
+  ;;   :hook (eshell-load . eat-eshell-mode))
+
+  (use-package vterm
     :straight nil
-    :general
-    (general-leader
-      "o o" '(my-eshell-toggle :which-key "Toggle eshell")))
+    ;; :general
+    ;; (general-leader
+    ;;   "o o" '(my-shell-toggle :which-key "Toggle eshell"))
+    )
+
+  ;; (pop-to-buffer-same-window)
+  ;; (with-current-buffer (get-buffer-create "teste")
+  ;;   (vterm-mode))
 #+end_src
 
 * Utils

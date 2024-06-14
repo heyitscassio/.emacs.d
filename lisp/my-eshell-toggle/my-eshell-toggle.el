@@ -2,6 +2,9 @@
 
 ;;; Code:
 
+(defvar default-directory)
+(defvar eshell-buffer-name)
+
 (defun my-eshell--get-buffer-name ()
   (if-let ((current (project-current)))
       (format "*eshell - %s*" (project-name current))
@@ -11,9 +14,6 @@
   (if-let ((current (project-current)))
       (project-root (project-current))
     default-directory))
-
-(defvar default-directory)
-(defvar eshell-buffer-name)
 
 (defun my-eshell-toggle ()
   (interactive)

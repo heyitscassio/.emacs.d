@@ -165,8 +165,12 @@
 
 (defun my-modeline--flymake ()
   (if flymake-mode
-      (flymake--mode-line-counters)
-    ""))
+      '("["
+        (:eval (flymake--mode-line-counter :error))
+        (:eval (flymake--mode-line-counter :warning))
+        (:eval (flymake--mode-line-counter :note))
+        "]")
+      ""))
 
 (defvar-local my-modeline-flymake
   '(:eval (my-modeline--flymake)))
@@ -211,12 +215,12 @@
         ))
 
 (defvar-local my-modeline-right
-  (list my-modeline-flymake
-        my-modeline-persp
-        my-modeline-vc-branch
-        " "
-        my-modeline-major-mode
-        " "))
+    (list my-modeline-flymake
+          my-modeline-persp
+          my-modeline-vc-branch
+          " "
+          my-modeline-major-mode
+          " "))
 
 (defvar my-modeline-format
   '(:eval (my-modeline--format my-modeline-left my-modeline-right)))
