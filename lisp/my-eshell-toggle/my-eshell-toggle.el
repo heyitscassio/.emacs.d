@@ -19,7 +19,9 @@
   (interactive)
   (let ((default-directory (my-eshell--get-directory))
         (eshell-buffer-name (my-eshell--get-buffer-name)))
-    (eshell)))
+    (if (string= (buffer-name) eshell-buffer-name)
+        (quit-window)
+      (eshell))))
 
 (provide 'my-eshell-toggle)
 

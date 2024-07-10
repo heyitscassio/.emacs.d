@@ -1,20 +1,11 @@
 ;; -*- lexical-binding: t; -*-
 
-;; The default is 800 kilobytes.  Measured in bytes.
-(setq gc-cons-threshold (* 50 1000 1000))
-
 ;; Profile emacs startup
 (add-hook 'emacs-startup-hook
           (lambda ()
             (message "*** Emacs loaded in %s seconds with %d garbage collections."
                      (emacs-init-time "%.2f")
                      gcs-done)))
-
-;; Silence compiler warnings as they can be pretty disruptive
-(setq native-comp-async-report-warnings-errors nil)
-
-;; Set the right directory to store the native comp cache
-(add-to-list 'native-comp-eln-load-path (expand-file-name "eln-cache/" user-emacs-directory))
 
 (defvar ignored-buffers '("\\*Messages\\*"
                           "\\*straight-process\\*"
@@ -41,6 +32,7 @@
 
 ;; Use straight.el for use-package expressions
 (straight-use-package 'use-package)
+(setq straight-recipe-repositories '(melpa gnu-elpa-mirror nongnu-elpa el-get emacsmirror-mirror))
 (setq straight-use-package-by-default t)
 
 ;; Change the user-emacs-directory to keep unwanted things out of ~/.emacs.d
@@ -52,11 +44,20 @@
   :init
   (require 'no-littering))
 
+;; Garbage collector
+(use-package gcmh
+  :init
+  (gcmh-mode))
+
+(use-package exec-path-from-shell
+  :init
+  (when (memq window-system '(mac ns x))
+    (exec-path-from-shell-initialize)))
+
+
 ;; Keep customization settings in a temporary file (thanks Ambrevar!)
-(setq custom-file
-      (if (boundp 'server-socket-dir)
-          (expand-file-name "custom.el" server-socket-dir)
-        (expand-file-name (format "emacs-custom-%s.el" (user-uid)) temporary-file-directory)))
+(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
+
 (load custom-file t)
 
 ; Backup directory
@@ -70,20 +71,6 @@
       kept-old-versions 10
       kept-new-versions 10)
 
-(defun open-emms-window ()
-  (persp-switch "music")
-  (emms-smart-browse))
-
-(defun print-colors ()
-  (let ((colors '(black red green yellow blue magenta cyan white)))
-    (mapc #'message
-            (mapcar (lambda (color)
-                      (format "%s = %s | %s\n"
-                              color
-                              (face-foreground (intern (format "ansi-color-%s" color)))
-                              (face-foreground (intern (format "ansi-color-bright-%s" color)))))
-                    colors))))
-
 (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
 
 (use-package undo-tree
@@ -91,6 +78,34 @@
   (undo-tree-history-directory-alist `(("." . ,(concat user-emacs-directory "undo-tree-hist/"))))
   :init
   (global-undo-tree-mode))
+
+(use-package evil-goggles
+  :hook (evil-mode . evil-goggles-mode)
+  :custom
+  (evil-goggles-duration 0.1)
+  (evil-goggles-pulse nil)
+  (evil-goggles-enable-delete nil)
+  (evil-goggles-enable-change nil)
+  :config
+  (setq evil-goggles--commands
+        `(,@evil-goggles--commands
+          (lispyville-yank
+            :face evil-goggles-yank-face
+            :switch evil-goggles-enable-yank
+            :advice evil-goggles--generic-async-advice)
+          (lispyville-yank-line
+            :face evil-goggles-yank-face
+            :switch evil-goggles-enable-yank
+            :advice evil-goggles--generic-async-advice)
+          (lispyville-indent
+            :face evil-goggles-indent-face
+            :switch evil-goggles-enable-indent
+            :advice evil-goggles--generic-async-advice)
+          (lispyville-join
+            :face evil-goggles-join-face
+            :switch evil-goggles-enable-join
+            :advice evil-goggles--join-advice)))
+  (evil-goggles-use-diff-faces))
 
 (use-package evil
   :hook (emacs-lisp-mode . (lambda () (setq evil-lookup-func #'my-elisp-lookup)))
@@ -117,65 +132,6 @@
   :init
   (evil-collection-init))
 
-(use-package evil-goggles
-  :custom
-  (evil-goggles-enable-delete nil)
-  (evil-goggles-enable-change nil)
-  :config
-  (setq evil-goggles--commands
-        (append evil-goggles--commands
-                '((evil-magit-yank-whole-line
-                   :face evil-goggles-yank-face
-                   :switch evil-goggles-enable-yank
-                   :advice evil-goggles--generic-async-advice)
-                  (+evil:yank-unindented
-                   :face evil-goggles-yank-face
-                   :switch evil-goggles-enable-yank
-                   :advice evil-goggles--generic-async-advice)
-                  (+eval:region
-                   :face evil-goggles-yank-face
-                   :switch evil-goggles-enable-yank
-                   :advice evil-goggles--generic-async-advice)
-                  (lispyville-delete
-                   :face evil-goggles-delete-face
-                   :switch evil-goggles-enable-delete
-                   :advice evil-goggles--generic-blocking-advice)
-                  (lispyville-delete-line
-                   :face evil-goggles-delete-face
-                   :switch evil-goggles-enable-delete
-                   :advice evil-goggles--delete-line-advice)
-                  (lispyville-yank
-                   :face evil-goggles-yank-face
-                   :switch evil-goggles-enable-yank
-                   :advice evil-goggles--generic-async-advice)
-                  (lispyville-yank-line
-                   :face evil-goggles-yank-face
-                   :switch evil-goggles-enable-yank
-                   :advice evil-goggles--generic-async-advice)
-                  (lispyville-change
-                   :face evil-goggles-change-face
-                   :switch evil-goggles-enable-change
-                   :advice evil-goggles--generic-blocking-advice)
-                  (lispyville-change-line
-                   :face evil-goggles-change-face
-                   :switch evil-goggles-enable-change
-                   :advice evil-goggles--generic-blocking-advice)
-                  (lispyville-change-whole-line
-                   :face evil-goggles-change-face
-                   :switch evil-goggles-enable-change
-                   :advice evil-goggles--generic-blocking-advice)
-                  (lispyville-indent
-                   :face evil-goggles-indent-face
-                   :switch evil-goggles-enable-indent
-                   :advice evil-goggles--generic-async-advice)
-                  (lispyville-join
-                   :face evil-goggles-join-face
-                   :switch evil-goggles-enable-join
-                   :advice evil-goggles--join-advice))))
-  :init
-  (evil-goggles-mode)
-  (evil-goggles-use-diff-faces))
-
 (use-package evil-anzu
   :after evil
   :custom
@@ -185,7 +141,7 @@
 
 (use-package which-key
   :custom
-  (which-key-idle-delay 0.3)
+  (which-key-idle-delay 1)
   :init
   (which-key-mode))
 
@@ -237,7 +193,8 @@
 (scroll-bar-mode -1)
 (tool-bar-mode -1)
 (tooltip-mode -1)
-(set-fringe-mode '(10 . nil))
+;; (set-fringe-mode 5)
+(fringe-mode '(5 . 5))
 (menu-bar-mode -1)
 (blink-cursor-mode 0)
 (set-default 'truncate-lines t)
@@ -322,25 +279,6 @@
   (general-leader
    "o R" 'rainbow-mode))
 
-(defvar nextcloud-password)
-(defvar nextcloud-user)
-(defvar nextcloud-remote-path)
-(defvar nextcloud-local-path)
-(defvar nextcloud-url)
-
-(defun sync-nextcloud ()
-  (interactive)
-  (let ((command (format "nextcloudcmd --password '%s' --user '%s' --path '%s' '%s' '%s'"
-                         nextcloud-password
-                         nextcloud-user
-                         nextcloud-remote-path
-                         nextcloud-local-path
-                         nextcloud-url)))
-    (save-window-excursion
-      (shell-command command))
-    (message "sync done")
-    (revert-buffer :ignore-auto :noconfirm)))
-
 (setq org-agenda-files '("~/doc/agendas/agenda.org"))
 
 (defvar after-enable-theme-hook nil
@@ -352,36 +290,60 @@
 
 (advice-add 'enable-theme :after #'run-after-enable-theme-hook)
 
+(when (eq system-type 'darwin)
+  (setq mac-command-modifier 'control
+        mac-option-modifier 'meta
+        mac-right-option-modifier 'none
+        mac-control-modifier 'super
+        mac-function-modifier 'hyper))
+
 (use-package fontaine
   :custom
   (fontaine-latest-state-file (locate-user-emacs-file "fontaine-latest-state.eld"))
-  (fontaine-presets '((regular :default-height 170)
+  (fontaine-presets '((regular :default-height 130)
                       (big :default-height 200)
-                      (t :default-family "Go Mono Nerd Font")))
+                      (t :default-family "Menlo")))
   :config
   (fontaine-set-preset (or (fontaine-restore-latest-preset) 'regular))
   :init
   (fontaine-mode))
+
+(defcustom my-dark-theme 'leuven-dark
+  "My dark theme"
+  :type 'symbol)
+
+(defcustom my-light-theme 'leuven-light
+  "My light theme"
+  :type 'symbol)
+
+(defun my-set-theme (appearance)
+  (let ((theme (if (eq appearance 'light) my-light-theme my-dark-theme)))
+    (dolist (enabled-theme custom-enabled-themes)
+      (disable-theme enabled-theme))
+    (load-theme theme t)))
 
 (use-package modus-themes
   :custom
   (modus-themes-italic-constructs t)
   (modus-themes-org-blocks 'gray-background)
   :config
-  (let ((modus-palette (append (seq-filter
-                                (lambda (x)
-                                  (let ((selector (car x)))
-                                    (cond
-                                     ((eq selector 'fringe) nil)
-                                     (t 't))))
-                                modus-themes-preset-overrides-intense)
-                               '((fringe bg-dim)))))
-    (setq modus-themes-common-palette-overrides modus-palette))
-  (modus-themes-select 'modus-operandi))
+  (setq my-dark-theme 'modus-vivendi)
+  (setq my-light-theme 'modus-operandi)
+  ;; (let ((modus-palette (append (seq-filter
+  ;;                               (lambda (x)
+  ;;                                 (let ((selector (car x)))
+  ;;                                   (cond
+  ;;                                    ((eq selector 'fringe) nil)
+  ;;                                    (t 't))))
+  ;;                               modus-themes-preset-overrides-intense)
+  ;;                              '((fringe bg-dim))))))
+  (setq modus-themes-common-palette-overrides modus-themes-preset-overrides-intense)
+  (my-set-theme 'dark))
 
 (global-prettify-symbols-mode)
 
 (use-package org
+  ;; :straight nil
   :general
   (general-local-leader
    :keymaps 'org-mode-map
@@ -403,7 +365,7 @@
   (org-src-preserve-indentation nil)
   (org-startup-folded 'content)
   (org-cycle-separator-lines 2)
-  (org-capture-bookmark nil)
+  (org-capture-bookmarkk nil)
   :hook (org-mode . my-org-mode-setup)
   :init
   (defun my-org-mode-setup ()
@@ -424,24 +386,33 @@
   (add-to-list 'org-structure-template-alist '("yaml" . "src yaml"))
   (add-to-list 'org-structure-template-alist '("json" . "src json")))
 
-(defun my/org-babel-tangle-config ()
-  (when (string-equal (buffer-file-name)
-                      (expand-file-name "~/.emacs.d/init.org"))
-    (let ((org-config-babel-evaluate nil))
-      (org-babel-tangle))))
+;; (defun my/org-babel-tangle-config ()
+;;   (when (string-equal (buffer-file-name)
+;;                       (expand-file-name "~/.emacs.d/init.org"))
+;;     (let ((org-config-babel-evaluate nil))
+;;       (org-babel-tangle))))
 
-  (add-hook 'org-mode-hook
-            (lambda ()
-              (add-hook 'after-save-hook #'my/org-babel-tangle-config)))
+;;   (add-hook 'org-mode-hook
+;;             (lambda ()
+;;               (add-hook 'after-save-hook #'my/org-babel-tangle-config)))
 
 (use-package minions
   :init
   (minions-mode))
 
-(use-package my-modeline
-  :straight nil
-  :config
-  (setq-default mode-line-format my-modeline-format))
+;; (use-package my-modeline
+;;   :straight nil
+;;   :config
+;;   (setq-default mode-line-format my-modeline-format))
+;; (use-package nyan-mode
+;;   :init
+;;   (nyan-mode))
+
+(use-package doom-modeline
+  :custom
+  (doom-modeline-icon nil)
+  :init
+  (doom-modeline-mode 1))
 
 (use-package persp-mode
   :hook
@@ -505,7 +476,7 @@
 (setq-default show-trailing-whitespace t)
 
 (use-package emacs
-  :hook (prog-mode . electric-pair-local-mode))
+  :hook ((prog-mode cider-repl-mode) . electric-pair-local-mode))
 
 (use-package lispyville
   :hook ((lisp-mode
@@ -517,6 +488,7 @@
           lfe-mode
           dune-mode
           clojure-mode
+          cider-repl-mode
           fennel-mode)
          . lispyville-mode)
   :config
@@ -585,23 +557,30 @@ folder, otherwise delete a word"
     "Enable Corfu in the minibuffer if `completion-at-point' is bound."
     (when (where-is-internal #'completion-at-point (list (current-local-map)))
       (corfu-mode 1)))
-  :hook (((prog-mode eshell-mode) . corfu-mode)
+  :hook (((prog-mode eshell-mode cider-repl-mode) . corfu-mode)
          (corfu-mode . corfu-popupinfo-mode)
          (minibuffer-setup . corfu-enable-in-minibuffer))
   :custom
   (corfu-cycle t)
   (corfu-auto t)
   (corfu-popupinfo-delay '(1.0 . 0.5))
-  (corfu-auto-delay 0.2)
-  (corfu-auto-prefix 2)
+  (corfu-auto-delay 0)
+  (corfu-auto-prefix 3)
   (corfu-quit-no-match 'separator)
-  (corfu-preselect 'valid)
-  (corfu-preview-current 'instert)
+  (corfu-preselect 'prompt)
+  (corfu-preview-current 'insert)
   :general
   (:keymaps 'corfu-map
             "C-s" 'corfu-quit
             "<tab>" 'corfu-next
             "<backtab>" 'corfu-previous))
+
+(use-package kind-icon
+  :after corfu
+  :custom
+  (kind-icon-use-icons nil)
+  :config
+  (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
 
 (use-package cape
   :init
@@ -609,18 +588,15 @@ folder, otherwise delete a word"
 
 (use-package orderless
   :custom
-  (orderless-matching-styles '(orderless-initialism orderless-flex))
-  (completion-styles '(orderless basic))
-  ;; (completion-category-defaults nil)
+  (completion-styles '(orderless-fast basic))
   (completion-category-overrides '((file (styles . (partial-completion)))))
   :config
   (defun orderless-fast-dispatch (word index total)
     (and (= index 0) (= total 1) (length< word 4)
          (cons 'orderless-literal-prefix word)))
-
   (orderless-define-completion-style orderless-fast
-    (orderless-style-dispatchers '())
-    (orderless-matching-styles '(orderless-flex orderless-regexp))))
+    (orderless-style-dispatchers '(orderless-fast-dispatch))
+    (orderless-matching-styles '(orderless-initialism orderless-flex))))
 
 (use-package consult
   :after persp-mode
@@ -668,7 +644,6 @@ folder, otherwise delete a word"
 (use-package clojure-mode)
 
 (use-package cider
-  :straight (cider :host nil :type git :repo "git@github.com:toniz4/cider.git")
   :hook (clojure-mode . cider-mode)
   :custom
   (cider-clojure-cli-global-options "-Adev")
@@ -676,7 +651,7 @@ folder, otherwise delete a word"
   (cider-repl-display-help-banner nil)
   (cider-eval-result-duration 'change)
   (cider-repl-pop-to-buffer-on-connect 'display-only)
-  (cider-xref-fn-depth 90)
+  (cider-xref-fn-depth -100)
   (cider-offer-to-open-cljs-app-in-browser nil)
   :general
   (general-local-leader
@@ -709,6 +684,11 @@ folder, otherwise delete a word"
   (typescript-indent-level 2))
 
 (use-package yaml-mode)
+
+(use-package dockerfile-mode)
+
+(use-package extempore-mode
+  :custom (extempore-path (expand-file-name "~/Downloads/extempore")))
 
 (use-package pdf-tools
   :mode ("\\.pdf\\'" . pdf-view-mode)
@@ -775,6 +755,9 @@ folder, otherwise delete a word"
                 '(display-buffer-same-window))
                nil)))))
 
+;; (use-package magit-delta
+;;   :hook (magit-mode . magit-delta-mode))
+
 (use-package restclient
   :general
   (general-leader
@@ -785,7 +768,12 @@ folder, otherwise delete a word"
     (switch-to-buffer "restclient.http")
     (restclient-mode)))
 
+;; (use-package project)
+;; (use-package projectile)
+(use-package flymake)
+
 (use-package eglot
+  :straight nil
   :hook (((clojure-mode
            clojurescript-mode
            go-mode
@@ -831,23 +819,31 @@ folder, otherwise delete a word"
 
 ;; (use-package my-eshell-toggle
 ;;   :straight nil
+;;   :hook (eshell-mode . (lambda () (setq-local show-trailing-whitespace nil)))
 ;;   :general
+;;   (general-local-leader
+;;     :keymaps 'eshell-mode-map
+;;     "c" '(my-eshell-clear :which-key "Clear eshell buffer"))
 ;;   (general-leader
-;;     "o o" '(my-eshell-toggle :which-key "Toggle eshell")))
+;;     "o o" '(my-eshell-toggle :which-key "Toggle eshell"))
+;;   :init
+;;   (defun my-eshell-clear ()
+;;     "Clear eshell buffer"
+;;     (interactive)
+;;     (when (derived-mode-p 'eshell-mode)
+;;       (end-of-buffer)
+;;       (eshell-kill-input)
+;;       (insert "clear-scrollback")
+;;       (eshell-send-input)
+;;       (end-of-buffer)
+;;       (eshell-bol)))
+;;   (add-to-list 'display-buffer-alist '("\\*eshell -.*"
+;;                                        (display-buffer-in-side-window)
+;;                                        (window-height  . 0.20)
+;;                                        (preserve-size . (nil . t)))))
 
-;; (use-package eat
-;;   :hook (eshell-load . eat-eshell-mode))
-
-(use-package vterm
-  :straight nil
-  ;; :general
-  ;; (general-leader
-  ;;   "o o" '(my-shell-toggle :which-key "Toggle eshell"))
-  )
-
-;; (pop-to-buffer-same-window)
-;; (with-current-buffer (get-buffer-create "teste")
-;;   (vterm-mode))
+(use-package eat
+  :hook (eshell-load . eat-eshell-mode))
 
 (use-package jarchive
   :init

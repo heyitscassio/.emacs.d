@@ -4,17 +4,12 @@
 (setq gc-cons-threshold most-positive-fixnum
       gc-cons-percentage 0.6)
 
-(add-hook 'emacs-startup-hook
-          #'(lambda () (setq gc-cons-threshold (* 2 1000 1000))))
-
 ;; Compile warnings
-;;  (setq warning-minimum-level :emergency)
+(setq warning-minimum-level :emergency)
 (setq native-comp-async-report-warnings-errors 'silent) ;; native-comp warning
-(setq byte-compile-warnings '(not free-vars unresolved noruntime lexical make-local))
+;; (setq byte-compile-warnings '(not free-vars unresolved noruntime lexical make-local))
 
-(setq package-native-compile t
-      native-comp-deferred-compilation t
-      native-comp-async-report-warnings-errors nil)
+(setq package-native-compile t)
 
 ;; optimizations (froom Doom's core.el). See that file for descriptions.
 (setq idle-update-delay 1.0)
@@ -32,3 +27,9 @@
 (setq read-process-output-max (* 1024 1024)) ;; 1mb
 
 (setq package-enable-at-startup nil)
+
+;; Silence compiler warnings as they can be pretty disruptive
+(setq native-comp-async-report-warnings-errors nil)
+
+;; Set the right directory to store the native comp cache
+;; (add-to-list 'native-comp-eln-load-path (expand-file-name "eln-cache/" user-emacs-directory))
