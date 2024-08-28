@@ -195,7 +195,7 @@
 (tooltip-mode -1)
 ;; (set-fringe-mode 5)
 (fringe-mode '(5 . 5))
-(menu-bar-mode -1)
+;; (menu-bar-mode -1)
 (blink-cursor-mode 0)
 (set-default 'truncate-lines t)
 
@@ -596,7 +596,7 @@ folder, otherwise delete a word"
          (cons 'orderless-literal-prefix word)))
   (orderless-define-completion-style orderless-fast
     (orderless-style-dispatchers '(orderless-fast-dispatch))
-    (orderless-matching-styles '(orderless-initialism orderless-flex))))
+    (orderless-matching-styles '(orderless-literal orderless-regexp))))
 
 (use-package consult
   :after persp-mode
@@ -630,8 +630,6 @@ folder, otherwise delete a word"
    :default nil
    :narrow ?f)
   (push consult-project-extra--source-file consult-buffer-sources))
-
-
 
 (use-package markdown-mode)
 
@@ -846,5 +844,4 @@ folder, otherwise delete a word"
   :hook (eshell-load . eat-eshell-mode))
 
 (use-package jarchive
-  :init
-  (jarchive-setup))
+  :hook (clojure-mode . jarchive-mode))
