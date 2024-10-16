@@ -3,6 +3,7 @@
 ;;; Code:
 
 (defvar default-directory)
+
 (defvar eshell-buffer-name)
 
 (defun my-eshell--get-buffer-name ()
