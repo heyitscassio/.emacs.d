@@ -165,10 +165,13 @@
 
 (defun my-modeline--flymake ()
   (if flymake-mode
+      (let (()))
       '("["
-        (:eval (flymake--mode-line-counter :error))
-        (:eval (flymake--mode-line-counter :warning))
-        (:eval (flymake--mode-line-counter :note))
+        (:eval (flymake--mode-line-counter :error 1))
+        " "
+        (:eval (flymake--mode-line-counter :warning 1))
+        " "
+        (:eval (flymake--mode-line-counter :note 1))
         "]")
       ""))
 
@@ -215,7 +218,8 @@
         ))
 
 (defvar-local my-modeline-right
-    (list my-modeline-flymake
+    (list
+     ;; my-modeline-flymake
           my-modeline-persp
           my-modeline-vc-branch
           " "
