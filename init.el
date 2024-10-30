@@ -30,10 +30,14 @@
         (eval-print-last-sexp)))
     (load bootstrap-file nil 'nomessage)))
 
-;; Use straight.el for use-package expressions
 (straight-use-package 'use-package)
 (setq straight-recipe-repositories '(melpa gnu-elpa-mirror nongnu-elpa el-get emacsmirror-mirror))
-(setq straight-use-package-by-default t)
+
+(use-package straight
+  :custom
+  ;; add project and flymake to the pseudo-packages variable so straight.el doesn't download a separate version than what eglot downloads.
+  (straight-built-in-pseudo-packages '(emacs nadvice python image-mode project flymake xref))
+  (straight-use-package-by-default t))
 
 ;; Change the user-emacs-directory to keep unwanted things out of ~/.emacs.d
 (setq user-emacs-directory (expand-file-name "~/.cache/emacs/")
@@ -54,8 +58,6 @@
   (when (memq window-system '(mac ns x))
     (exec-path-from-shell-initialize)))
 
-
-;; Keep customization settings in a temporary file (thanks Ambrevar!)
 (setq custom-file (expand-file-name "custom.el" user-emacs-directory))
 
 (load custom-file t)
@@ -70,14 +72,6 @@
       vc-make-backup-files t
       kept-old-versions 10
       kept-new-versions 10)
-
-(global-set-key (kbd "<escape>") 'keyboard-escape-quit)
-
-(use-package undo-tree
-  :custom
-  (undo-tree-history-directory-alist `(("." . ,(concat user-emacs-directory "undo-tree-hist/"))))
-  :init
-  (global-undo-tree-mode))
 
 (use-package evil-goggles
   :hook (evil-mode . evil-goggles-mode)
@@ -107,6 +101,24 @@
             :advice evil-goggles--join-advice)))
   (evil-goggles-use-diff-faces))
 
+(use-package undo-fu)
+
+(use-package undo-fu-session
+  :init
+  (undo-fu-session-mode))
+
+(use-package vundo
+  :custom
+  (vundo-window-max-height nil)
+  (vundo-roll-back-on-quit nil)
+  :init
+  (add-to-list 'display-buffer-alist
+               '(" \\*vundo tree\\*"
+                 (display-buffer-at-bottom)
+                 (side . bottom)
+                 (slot . 0)
+                 (window-height . .33))))
+
 (use-package evil
   :hook (emacs-lisp-mode . (lambda () (setq evil-lookup-func #'my-elisp-lookup)))
   :custom
@@ -115,7 +127,7 @@
   (evil-want-C-u-scroll t)
   (evil-want-C-i-jump t)
   (evil-want-Y-yank-to-eol t)
-  (evil-undo-system 'undo-tree)
+  (evil-undo-system 'undo-fu)
   (evil-echo-state nil)
   (evil-auto-indent t)
   :init
@@ -158,6 +170,8 @@
     :global-prefix "C-SPC m"))
 
 (use-package emacs
+  :init
+  (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
   :general
   (general-leader
     "b" '(nil :which-key "Buffers")
@@ -193,9 +207,11 @@
 (scroll-bar-mode -1)
 (tool-bar-mode -1)
 (tooltip-mode -1)
-;; (set-fringe-mode 5)
 (fringe-mode '(5 . 5))
-;; (menu-bar-mode -1)
+
+(if (not (eq system-type 'darwin))
+    (menu-bar-mode -1))
+
 (blink-cursor-mode 0)
 (set-default 'truncate-lines t)
 
@@ -279,8 +295,6 @@
   (general-leader
    "o R" 'rainbow-mode))
 
-(setq org-agenda-files '("~/doc/agendas/agenda.org"))
-
 (defvar after-enable-theme-hook nil
   "Normal hook run after enabling a theme.")
 
@@ -300,8 +314,8 @@
 (use-package fontaine
   :custom
   (fontaine-latest-state-file (locate-user-emacs-file "fontaine-latest-state.eld"))
-  (fontaine-presets '((regular :default-height 130)
-                      (big :default-height 200)
+  (fontaine-presets '((regular :default-height 120)
+                      (big :default-height 180)
                       (t :default-family "Menlo")))
   :config
   (fontaine-set-preset (or (fontaine-restore-latest-preset) 'regular))
@@ -329,21 +343,24 @@
   :config
   (setq my-dark-theme 'modus-vivendi)
   (setq my-light-theme 'modus-operandi)
-  ;; (let ((modus-palette (append (seq-filter
-  ;;                               (lambda (x)
-  ;;                                 (let ((selector (car x)))
-  ;;                                   (cond
-  ;;                                    ((eq selector 'fringe) nil)
-  ;;                                    (t 't))))
-  ;;                               modus-themes-preset-overrides-intense)
-  ;;                              '((fringe bg-dim))))))
-  (setq modus-themes-common-palette-overrides modus-themes-preset-overrides-intense)
-  (my-set-theme 'dark))
+  (let ((modus-palette (append (seq-filter
+                                (lambda (x)
+                                  (let ((selector (car x)))
+                                    (cond
+                                     ((eq selector 'fringe) nil)
+                                     (t 't))))
+                                modus-themes-preset-overrides-intense)
+                               '((fringe bg-dim)))))
+    (setq modus-themes-common-palette-overrides modus-palette))
+  (my-set-theme 'light))
 
-(global-prettify-symbols-mode)
+(use-package alert
+  :custom (alert-default-style 'osx-notifier))
+
+(use-package org-modern)
 
 (use-package org
-  ;; :straight nil
+  :straight nil
   :general
   (general-local-leader
    :keymaps 'org-mode-map
@@ -369,12 +386,16 @@
   :hook (org-mode . my-org-mode-setup)
   :init
   (defun my-org-mode-setup ()
-    (org-indent-mode)
+    ;; (org-indent-mode)
     (auto-fill-mode 0)
     (visual-line-mode 1))
   :config
   (require 'org-tempo)
   ;; (require 'ox-latex)
+
+  (setq org-agenda-files '(
+                           ;; "~/doc/agendas"
+                           "~/Documents"))
 
   (add-to-list 'org-structure-template-alist '("sh" . "src sh"))
   (add-to-list 'org-structure-template-alist '("el" . "src emacs-lisp"))
@@ -396,14 +417,15 @@
 ;;             (lambda ()
 ;;               (add-hook 'after-save-hook #'my/org-babel-tangle-config)))
 
-(use-package minions
-  :init
-  (minions-mode))
+;; (use-package minions
+;;   :init
+;;   (minions-mode))
 
 ;; (use-package my-modeline
 ;;   :straight nil
 ;;   :config
 ;;   (setq-default mode-line-format my-modeline-format))
+
 ;; (use-package nyan-mode
 ;;   :init
 ;;   (nyan-mode))
@@ -415,6 +437,7 @@
   (doom-modeline-mode 1))
 
 (use-package persp-mode
+  ;; :after magit
   :hook
   (window-setup . persp-mode)
   :general
@@ -440,7 +463,28 @@
   (persp-autokill-buffer-on-remove 'kill-weak)
   (persp-auto-resume-time 0.1)
   (add-to-list 'persp-save-buffer-functions #'my-persp-ignore-none-persp)
+  ;; (persp-add-buffer-on-after-change-major-mode t)
+  :config
+  ;; Does not work as intended
+  ;; (add-hook 'persp-common-buffer-filter-functions
+  ;;           #'(lambda (b)
+  ;;               (or
+  ;;                (string-prefix-p "*" (buffer-name b))
+  ;;                (string-match-p "magit-.*:" (buffer-name b)))))
   :init
+  ;; Does not work as intended
+  ;; (with-eval-after-load 'magit
+  ;;   (message "loaded magit")
+  ;;   (persp-def-buffer-save/load
+  ;;    :mode 'magit-status-mode :tag-symbol 'def-magit-status-buffer
+  ;;    :save-vars '(major-mode default-directory)
+  ;;    :after-load-function #'(lambda (b &rest _)
+  ;;                             (with-current-buffer b (magit-refresh)))))
+
+  (defun persp-buffer-menu ()
+    (interactive)
+    (with-persp-buffer-list () (buffer-menu)))
+
   (defun my-persp-switch-by-index (index)
     "Switch to perspective by index, if the index is larger than the last perspecive or nil, switch to last perspective"
     (let* ((persps (reverse (butlast (persp-persps))))
@@ -455,11 +499,18 @@
     (when (not (persp--buffer-in-persps buffer))
       'skip)))
 
+
 (setq global-auto-revert-non-file-buffers t)
 
 (use-package emacs
   :init
   (show-paren-mode))
+
+(use-package reformatter
+  :init
+  (reformatter-define black-format
+    :program "black"
+    :args '("-")))
 
 (use-package aggressive-indent)
 
@@ -496,20 +547,6 @@
 
 (use-package origami
   :hook (yaml-mode . origami-mode))
-
-(use-package eldoc-box
-  :after eglot
-  :init
-  (general-def
-    :keymaps 'eglot-mode-map
-    :modes 'normal
-    "K" 'eldoc-box-help-at-point)
-  (general-def
-    :keymaps 'eldoc-mode-map
-    :modes 'normal
-    "K" 'eldoc-box-help-at-point)
-  ;; (advice-add 'eldoc-doc-buffer :override 'eldoc-box-help-at-point)
-  )
 
 (use-package envrc
   :init
@@ -618,7 +655,8 @@ folder, otherwise delete a word"
   (general-leader
     "/" '(consult-ripgrep :which-key "Ripgrep")
     "SPC" '(consult-buffer :which-key "All Buffers")
-    "si" '(consult-imenu :which-key "Imenu")))
+    "si" '(consult-imenu :which-key "Imenu")
+    "fF" '(consult-find :which-key "Find files")))
 
 (use-package consult-project-extra
   :after consult
@@ -630,6 +668,10 @@ folder, otherwise delete a word"
    :default nil
    :narrow ?f)
   (push consult-project-extra--source-file consult-buffer-sources))
+
+;;; Languages
+
+(use-package scad-mode)
 
 (use-package markdown-mode)
 
@@ -667,6 +709,9 @@ folder, otherwise delete a word"
                                        (window-height  . 0.20)
                                        (preserve-size . (nil . t)))))
 
+(use-package jarchive
+  :hook (clojure-mode . jarchive-mode))
+
 (use-package nix-mode)
 
 (use-package lua-mode)
@@ -685,8 +730,7 @@ folder, otherwise delete a word"
 
 (use-package dockerfile-mode)
 
-(use-package extempore-mode
-  :custom (extempore-path (expand-file-name "~/Downloads/extempore")))
+;;;; Tools
 
 (use-package pdf-tools
   :mode ("\\.pdf\\'" . pdf-view-mode)
@@ -753,9 +797,6 @@ folder, otherwise delete a word"
                 '(display-buffer-same-window))
                nil)))))
 
-;; (use-package magit-delta
-;;   :hook (magit-mode . magit-delta-mode))
-
 (use-package restclient
   :general
   (general-leader
@@ -766,16 +807,12 @@ folder, otherwise delete a word"
     (switch-to-buffer "restclient.http")
     (restclient-mode)))
 
-;; (use-package project)
-;; (use-package projectile)
-(use-package flymake)
-
 (use-package eglot
-  :straight nil
   :hook (((clojure-mode
            clojurescript-mode
            go-mode
-           c-mode)
+           c-mode
+           python-mode)
           .
           eglot-ensure)
          (eglot-managed-mode . my-eglot-lower-capf-prio))
@@ -803,6 +840,31 @@ folder, otherwise delete a word"
         (add-to-list 'completion-at-point-functions #'eglot-completion-at-point t)
         (add-to-list 'completion-at-point-functions t t)))))
 
+(use-package breadcrumb
+  :hook (eglot-managed-mode . breadcrumb-local-mode))
+
+(use-package dape
+  :init
+  (setq dape-buffer-window-arrangement 'left)
+  :general
+  (general-local-leader
+    "d" '(nil :which-key "Dape")
+    "dr" '(dape-restart :which-key "Restart")
+    "dt" '(dape-breakpoint-toggle :which-key "Toggle breakpoint")
+    "dl" '(dape-breakpoint-log :which-key "Log breakpoint"))
+  :config
+  (add-to-list 'dape-configs
+               '(debugpy-attach-port
+                 modes (python-mode python-ts-mode)
+                 port  (lambda () (read-number "Port: " 5679))
+                 ;; command "python"
+                 ;; command-args ("-m" "debugpy.adapter")
+                 :request "attach"
+                 :type "python"
+                 :justMyCode nil
+                 :showReturnValue t)))
+
+
 (use-package sideline-flymake
   :custom
   (sideline-flymake-display-mode 'line))
@@ -815,33 +877,5 @@ folder, otherwise delete a word"
 (use-package yasnippet
   :hook (prog-mode . yas-minor-mode))
 
-;; (use-package my-eshell-toggle
-;;   :straight nil
-;;   :hook (eshell-mode . (lambda () (setq-local show-trailing-whitespace nil)))
-;;   :general
-;;   (general-local-leader
-;;     :keymaps 'eshell-mode-map
-;;     "c" '(my-eshell-clear :which-key "Clear eshell buffer"))
-;;   (general-leader
-;;     "o o" '(my-eshell-toggle :which-key "Toggle eshell"))
-;;   :init
-;;   (defun my-eshell-clear ()
-;;     "Clear eshell buffer"
-;;     (interactive)
-;;     (when (derived-mode-p 'eshell-mode)
-;;       (end-of-buffer)
-;;       (eshell-kill-input)
-;;       (insert "clear-scrollback")
-;;       (eshell-send-input)
-;;       (end-of-buffer)
-;;       (eshell-bol)))
-;;   (add-to-list 'display-buffer-alist '("\\*eshell -.*"
-;;                                        (display-buffer-in-side-window)
-;;                                        (window-height  . 0.20)
-;;                                        (preserve-size . (nil . t)))))
-
 (use-package eat
   :hook (eshell-load . eat-eshell-mode))
-
-(use-package jarchive
-  :hook (clojure-mode . jarchive-mode))
