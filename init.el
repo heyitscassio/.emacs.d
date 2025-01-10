@@ -352,7 +352,7 @@
                                 modus-themes-preset-overrides-intense)
                                '((fringe bg-dim)))))
     (setq modus-themes-common-palette-overrides modus-palette))
-  (my-set-theme 'light))
+  (my-set-theme 'dark))
 
 (use-package alert
   :custom (alert-default-style 'osx-notifier))
@@ -407,34 +407,10 @@
   (add-to-list 'org-structure-template-alist '("yaml" . "src yaml"))
   (add-to-list 'org-structure-template-alist '("json" . "src json")))
 
-;; (defun my/org-babel-tangle-config ()
-;;   (when (string-equal (buffer-file-name)
-;;                       (expand-file-name "~/.emacs.d/init.org"))
-;;     (let ((org-config-babel-evaluate nil))
-;;       (org-babel-tangle))))
-
-;;   (add-hook 'org-mode-hook
-;;             (lambda ()
-;;               (add-hook 'after-save-hook #'my/org-babel-tangle-config)))
-
-;; (use-package minions
-;;   :init
-;;   (minions-mode))
-
-;; (use-package my-modeline
-;;   :straight nil
-;;   :config
-;;   (setq-default mode-line-format my-modeline-format))
-
-;; (use-package nyan-mode
-;;   :init
-;;   (nyan-mode))
-
-(use-package doom-modeline
-  :custom
-  (doom-modeline-icon nil)
-  :init
-  (doom-modeline-mode 1))
+(use-package my-modeline
+  :straight nil
+  :config
+  (setq-default mode-line-format my-modeline-format))
 
 (use-package persp-mode
   ;; :after magit
@@ -463,23 +439,6 @@
   (persp-autokill-buffer-on-remove 'kill-weak)
   (persp-auto-resume-time 0.1)
   (add-to-list 'persp-save-buffer-functions #'my-persp-ignore-none-persp)
-  ;; (persp-add-buffer-on-after-change-major-mode t)
-  :config
-  ;; Does not work as intended
-  ;; (add-hook 'persp-common-buffer-filter-functions
-  ;;           #'(lambda (b)
-  ;;               (or
-  ;;                (string-prefix-p "*" (buffer-name b))
-  ;;                (string-match-p "magit-.*:" (buffer-name b)))))
-  :init
-  ;; Does not work as intended
-  ;; (with-eval-after-load 'magit
-  ;;   (message "loaded magit")
-  ;;   (persp-def-buffer-save/load
-  ;;    :mode 'magit-status-mode :tag-symbol 'def-magit-status-buffer
-  ;;    :save-vars '(major-mode default-directory)
-  ;;    :after-load-function #'(lambda (b &rest _)
-  ;;                             (with-current-buffer b (magit-refresh)))))
 
   (defun persp-buffer-menu ()
     (interactive)
@@ -806,6 +765,13 @@ folder, otherwise delete a word"
     (interactive)
     (switch-to-buffer "restclient.http")
     (restclient-mode)))
+
+(use-package xref
+  :config
+  (add-to-list 'display-buffer-alist '("\\*xref\\*"
+                                       (display-buffer-in-side-window)
+                                       (window-height  . 0.20)
+                                       (preserve-size . (nil . t)))))
 
 (use-package eglot
   :hook (((clojure-mode
