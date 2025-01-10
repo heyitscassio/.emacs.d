@@ -129,6 +129,13 @@
 (defun my-modeline--evil-state-tag (variant)
   (my-modeline--evil-propretize-tag variant))
 
+(defun my-modeline--evil-macro ()
+  (when-let ((macro evil-this-macro))
+    (propertize (format " @%c" macro)
+                'face
+                'my-modeline-magenta-fg
+                'mouse-face 'mode-line-highlight)))
+
 (defun my-modeline--evil ()
   (let ((anzu-state (anzu--update-mode-line)))
     (if (my-modeline--window-selected-p)
@@ -138,7 +145,8 @@
       "")))
 
 (defvar-local my-modeline-evil
-  '(:eval (my-modeline--evil)))
+    '(:eval (list (my-modeline--evil)
+                  (my-modeline--evil-macro))))
 
 (defun my-modeline--major-mode ()
   (format "%s" (string-replace
@@ -154,9 +162,10 @@
   '(:eval (my-modeline--major-mode)))
 
 (defun my-modeline--buffer-state ()
-  (if (buffer-modified-p)
-      " *"
-    ""))
+  (cond
+   ((not (file-exists-p (buffer-file-name))) " -")
+   ((buffer-modified-p) " *")
+   (t nil)))
 
 (defvar-local my-modeline-buffer-state
   '(:eval (my-modeline--buffer-state)))
@@ -166,7 +175,7 @@
 (defun my-modeline--flymake ()
   (when (and (bound-and-true-p flymake-mode)
            flymake-mode)
-    flymake-mode-line-format))
+    '(:eval (list flymake-mode-line-exception flymake-mode-line-counters))))
 
 (defvar-local my-modeline-flymake
   '(:eval (my-modeline--flymake)))
@@ -193,7 +202,6 @@
 (defvar-local my-modeline-persp
   '(:eval (my-modeline--persp)))
 
-
 (defun my-modeline--project ()
   (when-let ((current (project-current)))
     (format " [%s]" (project-name current))))
@@ -202,22 +210,21 @@
   '(:eval (my-modeline--project)))
 
 (defvar-local my-modeline-left
-  (list my-modeline-evil
-        " "
-        my-modeline-buffer-name
-        my-modeline-buffer-state
-        my-modeline-project
-        mode-line-position-column-line-format
-        ))
+    (list my-modeline-evil
+          " "
+          my-modeline-buffer-name
+          my-modeline-buffer-state
+          my-modeline-project
+          mode-line-position-column-line-format))
 
 (defvar-local my-modeline-right
     (list
-     ;; my-modeline-flymake
-          my-modeline-persp
-          my-modeline-vc-branch
-          " "
-          my-modeline-major-mode
-          " "))
+     my-modeline-flymake
+     my-modeline-persp
+     my-modeline-vc-branch
+     " "
+     my-modeline-major-mode
+     " "))
 
 (defvar my-modeline-format
   '(:eval (my-modeline--format my-modeline-left my-modeline-right)))
@@ -225,3 +232,4 @@
 (provide 'my-modeline)
 
 ;;; my-modeline.el ends here
+;; (setq mode-line-format my-modeline-format)

@@ -33,11 +33,11 @@
 (straight-use-package 'use-package)
 (setq straight-recipe-repositories '(melpa gnu-elpa-mirror nongnu-elpa el-get emacsmirror-mirror))
 
-(use-package straight
-  :custom
-  ;; add project and flymake to the pseudo-packages variable so straight.el doesn't download a separate version than what eglot downloads.
-  (straight-built-in-pseudo-packages '(emacs nadvice python image-mode project flymake xref))
-  (straight-use-package-by-default t))
+ (use-package straight
+   :custom
+   ;; add project and flymake to the pseudo-packages variable so straight.el doesn't download a separate version than what eglot downloads.
+   (straight-built-in-pseudo-packages '(emacs nadvice python image-mode project flymake xref))
+   (straight-use-package-by-default t))
 
 ;; Change the user-emacs-directory to keep unwanted things out of ~/.emacs.d
 (setq user-emacs-directory (expand-file-name "~/.cache/emacs/")
@@ -770,6 +770,12 @@ folder, otherwise delete a word"
 (use-package xref
   :config
   (add-to-list 'display-buffer-alist '("\\*xref\\*"
+                                       (display-buffer-in-side-window)
+                                       (window-height  . 0.20)
+                                       (preserve-size . (nil . t)))))
+(use-package eldoc
+  :config
+  (add-to-list 'display-buffer-alist '("\\*eldoc\\*"
                                        (display-buffer-in-side-window)
                                        (window-height  . 0.20)
                                        (preserve-size . (nil . t)))))
