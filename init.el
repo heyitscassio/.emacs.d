@@ -172,6 +172,7 @@
 (use-package emacs
   :init
   (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
+  (setq frame-inhibit-implied-resize t)
   :general
   (general-leader
     "b" '(nil :which-key "Buffers")

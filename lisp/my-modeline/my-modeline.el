@@ -164,16 +164,9 @@
 (defvar flymake-mode nil)
 
 (defun my-modeline--flymake ()
-  (if flymake-mode
-      (let (()))
-      '("["
-        (:eval (flymake--mode-line-counter :error 1))
-        " "
-        (:eval (flymake--mode-line-counter :warning 1))
-        " "
-        (:eval (flymake--mode-line-counter :note 1))
-        "]")
-      ""))
+  (when (and (bound-and-true-p flymake-mode)
+           flymake-mode)
+    flymake-mode-line-format))
 
 (defvar-local my-modeline-flymake
   '(:eval (my-modeline--flymake)))
