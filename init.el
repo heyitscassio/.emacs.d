@@ -62,6 +62,13 @@
 
 (load custom-file t)
 
+;; Functions
+
+(defun my-open-in-finder (filename &optional _)
+  (interactive
+   (find-file-read-args "Open: " (confirm-nonexistent-file-or-buffer)))
+  (start-process "finder" nil "open" (expand-file-name filename)))
+
 ; Backup directory
 (setq backup-directory-alist `((".*" . ,(expand-file-name "backups" user-emacs-directory)))
       auto-save-file-name-transforms `((".*" ,(expand-file-name "autosave/"  user-emacs-directory) t))
@@ -126,7 +133,6 @@
   (evil-want-keybinding nil)
   (evil-want-C-u-scroll t)
   (evil-want-C-i-jump t)
-  (evil-want-Y-yank-to-eol t)
   (evil-undo-system 'undo-fu)
   (evil-echo-state nil)
   (evil-auto-indent t)
@@ -137,6 +143,7 @@
       (if sym
           (describe-symbol (symbol-at-point))
         (message "Invalid symbol"))))
+  (setq evil-want-Y-yank-to-eol t)
   (evil-mode))
 
 (use-package evil-collection
