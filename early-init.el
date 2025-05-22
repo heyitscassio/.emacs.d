@@ -10,6 +10,7 @@
 ;; (setq byte-compile-warnings '(not free-vars unresolved noruntime lexical make-local))
 
 (setq package-native-compile t)
+(setq native-comp-jit-compilation nil)
 
 ;; optimizations (froom Doom's core.el). See that file for descriptions.
 (setq idle-update-delay 1.0)
@@ -26,7 +27,7 @@
 ;; Data emacs reads from process
 (setq read-process-output-max (* 1024 1024)) ;; 1mb
 
-(setq package-enable-at-startup nil)
+;; (setq package-enable-at-startup t)
 
 ;; Silence compiler warnings as they can be pretty disruptive
 (setq native-comp-async-report-warnings-errors nil)

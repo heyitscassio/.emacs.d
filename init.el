@@ -1,5 +1,8 @@
 ;; -*- lexical-binding: t; -*-
 
+(defgroup cas-emacs nil
+  "General options for my dot Emacs.")
+
 ;; Profile emacs startup
 (add-hook 'emacs-startup-hook
           (lambda ()
@@ -15,33 +18,32 @@
 (defmacro remove-from-list (list value)
   `(setq ,list (remove ,value ,list)))
 
-(unless (featurep 'straight)
-  ;; Bootstrap straight.el
-  (defvar bootstrap-version)
-  (let ((bootstrap-file
-         (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
-        (bootstrap-version 5))
-    (unless (file-exists-p bootstrap-file)
-      (with-current-buffer
-          (url-retrieve-synchronously
-           "https://raw.githubusercontent.com/raxod502/straight.el/develop/install.el"
-           'silent 'inhibit-cookies)
-        (goto-char (point-max))
-        (eval-print-last-sexp)))
-    (load bootstrap-file nil 'nomessage)))
+(require 'package)
+(add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
 
-(straight-use-package 'use-package)
-(setq straight-recipe-repositories '(melpa gnu-elpa-mirror nongnu-elpa el-get emacsmirror-mirror))
+(setq package-selected-packages '(use-package))
 
- (use-package straight
-   :custom
-   ;; add project and flymake to the pseudo-packages variable so straight.el doesn't download a separate version than what eglot downloads.
-   (straight-built-in-pseudo-packages '(emacs nadvice python image-mode project flymake xref))
-   (straight-use-package-by-default t))
+(package-install-selected-packages)
+
+(eval-when-compile
+  (require 'use-package))
+
+(setq use-package-always-ensure t)
+
+(mapc
+ (lambda (string)
+   (add-to-list 'load-path (expand-file-name (locate-user-emacs-file string))))
+ '("lisp" "modules"))
+
+(setq elisp-flymake-byte-compile-load-path load-path)
 
 ;; Change the user-emacs-directory to keep unwanted things out of ~/.emacs.d
 (setq user-emacs-directory (expand-file-name "~/.cache/emacs/")
       url-history-file (expand-file-name "url/history" user-emacs-directory))
+
+(use-package dired
+  :ensure nil
+  :custom (dired-use-ls-dired nil))
 
 ;; Use no-littering to automatically set common paths to the new user-emacs-directory
 (use-package no-littering
@@ -64,7 +66,7 @@
 
 ;; Functions
 
-(defun my-open-in-finder (filename &optional _)
+(defun casmacs-open-in-finder (filename &optional _)
   (interactive
    (find-file-read-args "Open: " (confirm-nonexistent-file-or-buffer)))
   (start-process "finder" nil "open" (expand-file-name filename)))
@@ -79,84 +81,6 @@
       vc-make-backup-files t
       kept-old-versions 10
       kept-new-versions 10)
-
-(use-package evil-goggles
-  :hook (evil-mode . evil-goggles-mode)
-  :custom
-  (evil-goggles-duration 0.1)
-  (evil-goggles-pulse nil)
-  (evil-goggles-enable-delete nil)
-  (evil-goggles-enable-change nil)
-  :config
-  (setq evil-goggles--commands
-        `(,@evil-goggles--commands
-          (lispyville-yank
-            :face evil-goggles-yank-face
-            :switch evil-goggles-enable-yank
-            :advice evil-goggles--generic-async-advice)
-          (lispyville-yank-line
-            :face evil-goggles-yank-face
-            :switch evil-goggles-enable-yank
-            :advice evil-goggles--generic-async-advice)
-          (lispyville-indent
-            :face evil-goggles-indent-face
-            :switch evil-goggles-enable-indent
-            :advice evil-goggles--generic-async-advice)
-          (lispyville-join
-            :face evil-goggles-join-face
-            :switch evil-goggles-enable-join
-            :advice evil-goggles--join-advice)))
-  (evil-goggles-use-diff-faces))
-
-(use-package undo-fu)
-
-(use-package undo-fu-session
-  :init
-  (undo-fu-session-mode))
-
-(use-package vundo
-  :custom
-  (vundo-window-max-height nil)
-  (vundo-roll-back-on-quit nil)
-  :init
-  (add-to-list 'display-buffer-alist
-               '(" \\*vundo tree\\*"
-                 (display-buffer-at-bottom)
-                 (side . bottom)
-                 (slot . 0)
-                 (window-height . .33))))
-
-(use-package evil
-  :hook (emacs-lisp-mode . (lambda () (setq evil-lookup-func #'my-elisp-lookup)))
-  :custom
-  (evil-want-integration t)
-  (evil-want-keybinding nil)
-  (evil-want-C-u-scroll t)
-  (evil-want-C-i-jump t)
-  (evil-undo-system 'undo-fu)
-  (evil-echo-state nil)
-  (evil-auto-indent t)
-  :init
-  (defun my-elisp-lookup ()
-    (interactive)
-    (let ((sym (symbol-at-point)))
-      (if sym
-          (describe-symbol (symbol-at-point))
-        (message "Invalid symbol"))))
-  (setq evil-want-Y-yank-to-eol t)
-  (evil-mode))
-
-(use-package evil-collection
-  :after evil
-  :init
-  (evil-collection-init))
-
-(use-package evil-anzu
-  :after evil
-  :custom
-  (anzu-cons-mode-line-p nil)
-  :init
-  (global-anzu-mode))
 
 (use-package which-key
   :custom
@@ -199,23 +123,20 @@
     "hk" '(describe-key :which-key "Describe Key")
 
     "o" '(nil :which-key "Apps")
+    "op" '(nil :which-key "Profiler")
+    "ops" '(profiler-start :which-key "Profiler start")
+    "opk" '(profiler-stop :which-key "Profiler stop")
+    "opr" '(profiler-report :which-key "Profiler report")
     "p" '(nil :which-key "Project")
     "pf" '(project-find-file :which-key "Project find file")
     "qK" '(save-buffers-kill-emacs :which-key "Apps")
     "s" '(nil :which-key "Search")))
 
-(use-package evil-surround
-  :init
-  (global-evil-surround-mode))
-
-(let ((default-directory (concat (file-name-directory user-init-file) "lisp")))
-  (normal-top-level-add-subdirs-to-load-path))
-
 (setq inhibit-startup-message t)
 (scroll-bar-mode -1)
 (tool-bar-mode -1)
 (tooltip-mode -1)
-(fringe-mode '(5 . 5))
+;; (fringe-mode '(5 . 5))
 
 (if (not (eq system-type 'darwin))
     (menu-bar-mode -1))
@@ -227,8 +148,8 @@
   :hook ((magit-pre-refresh . diff-hl-magit-pre-refresh)
          (magit-post-refresh . diff-hl-magit-post-refresh))
   :init
-  (define-fringe-bitmap 'my-diff-hl-bitmap [] 5 1 '(top t))
-  (setq diff-hl-fringe-bmp-function (lambda (type pos) 'my-diff-hl-bitmap))
+  ;; (define-fringe-bitmap 'casmacs-diff-hl-bitmap [] 5 1 '(top t))
+  ;; (setq diff-hl-fringe-bmp-function (lambda (type pos) 'casmacs-diff-hl-bitmap))
   (global-diff-hl-mode))
 
 (setq help-window-select t)
@@ -259,7 +180,8 @@
 ;; Enable line numbers for some modes
 (dolist (mode '(text-mode-hook
                 prog-mode-hook
-                conf-mode-hook))
+                conf-mode-hook
+                html-mode-hook))
   (add-hook mode #'display-line-numbers-mode))
 
 ;; Override some modes which derive from the above
@@ -312,8 +234,12 @@
 
 (advice-add 'enable-theme :after #'run-after-enable-theme-hook)
 
+(native-comp-available-p)
+
 (when (eq system-type 'darwin)
-  (setq mac-command-modifier 'control
+  (setq mac-pass-command-to-system nil
+        mac-command-modifier 'control
+        mac-right-command-modifier 'control
         mac-option-modifier 'meta
         mac-right-option-modifier 'none
         mac-control-modifier 'super
@@ -324,43 +250,11 @@
   (fontaine-latest-state-file (locate-user-emacs-file "fontaine-latest-state.eld"))
   (fontaine-presets '((regular :default-height 120)
                       (big :default-height 180)
-                      (t :default-family "Menlo")))
+                      (t :default-family "SF Mono")))
   :config
   (fontaine-set-preset (or (fontaine-restore-latest-preset) 'regular))
   :init
   (fontaine-mode))
-
-(defcustom my-dark-theme 'leuven-dark
-  "My dark theme"
-  :type 'symbol)
-
-(defcustom my-light-theme 'leuven-light
-  "My light theme"
-  :type 'symbol)
-
-(defun my-set-theme (appearance)
-  (let ((theme (if (eq appearance 'light) my-light-theme my-dark-theme)))
-    (dolist (enabled-theme custom-enabled-themes)
-      (disable-theme enabled-theme))
-    (load-theme theme t)))
-
-(use-package modus-themes
-  :custom
-  (modus-themes-italic-constructs t)
-  (modus-themes-org-blocks 'gray-background)
-  :config
-  (setq my-dark-theme 'modus-vivendi)
-  (setq my-light-theme 'modus-operandi)
-  (let ((modus-palette (append (seq-filter
-                                (lambda (x)
-                                  (let ((selector (car x)))
-                                    (cond
-                                     ((eq selector 'fringe) nil)
-                                     (t 't))))
-                                modus-themes-preset-overrides-intense)
-                               '((fringe bg-dim)))))
-    (setq modus-themes-common-palette-overrides modus-palette))
-  (my-set-theme 'dark))
 
 (use-package alert
   :custom (alert-default-style 'osx-notifier))
@@ -368,7 +262,6 @@
 (use-package org-modern)
 
 (use-package org
-  :straight nil
   :general
   (general-local-leader
    :keymaps 'org-mode-map
@@ -391,9 +284,9 @@
   (org-startup-folded 'content)
   (org-cycle-separator-lines 2)
   (org-capture-bookmarkk nil)
-  :hook (org-mode . my-org-mode-setup)
+  :hook (org-mode . casmacs-org-mode-setup)
   :init
-  (defun my-org-mode-setup ()
+  (defun casmacs-org-mode-setup ()
     ;; (org-indent-mode)
     (auto-fill-mode 0)
     (visual-line-mode 1))
@@ -415,56 +308,60 @@
   (add-to-list 'org-structure-template-alist '("yaml" . "src yaml"))
   (add-to-list 'org-structure-template-alist '("json" . "src json")))
 
-(use-package my-modeline
-  :straight nil
-  :config
-  (setq-default mode-line-format my-modeline-format))
+;; (use-package casmacs-modeline
+;;   :straight nil
+;;   :config
+;;   (setq mode-line-compact nil)
+;;   (setq-default mode-line-format casmacs-modeline-format))
 
-(use-package persp-mode
-  ;; :after magit
-  :hook
-  (window-setup . persp-mode)
-  :general
-  (general-leader
-   "bD" '(persp-kill-buffer :which-key "Kill buffer")
-   "TAB" '(:ignore t :which-key "Perspective")
-   "TAB n" '(persp-switch :which-key "Switch perspective")
-   "TAB k" '(persp-kill :which-key "Kill perspective")
-   "TAB l" '(persp-next :which-key "Next perspective")
-   "TAB h" '(persp-prev :which-key "Previous perspective")
+;; (use-package keycast)
 
-   "TAB 1" (lambda () (interactive) (my-persp-switch-by-index 0))
-   "TAB 2" (lambda () (interactive) (my-persp-switch-by-index 1))
-   "TAB 3" (lambda () (interactive) (my-persp-switch-by-index 2))
-   "TAB 4" (lambda () (interactive) (my-persp-switch-by-index 3))
-   "TAB 5" (lambda () (interactive) (my-persp-switch-by-index 4))
-   "TAB 6" (lambda () (interactive) (my-persp-switch-by-index 5))
-   "TAB 7" (lambda () (interactive) (my-persp-switch-by-index 6))
-   "TAB 8" (lambda () (interactive) (my-persp-switch-by-index 7))
-   "TAB 9" (lambda () (interactive) (my-persp-switch-by-index 8))
-   "TAB 0" (lambda () (interactive) (my-persp-switch-by-index nil)))
-  :custom
-  (persp-autokill-buffer-on-remove 'kill-weak)
-  (persp-auto-resume-time 0.1)
-  (add-to-list 'persp-save-buffer-functions #'my-persp-ignore-none-persp)
+;; (use-package persp-mode
+;;   ;; :after magit
+;;   :hook
+;;   (window-setup . persp-mode)
+;;   :general
+;;   (general-leader
+;;    "bD" '(persp-kill-buffer :which-key "Kill buffer")
+;;    "bI" '(persp-ibuffer :which-key "Ibuffer")
+;;    "TAB" '(:ignore t :which-key "Perspective")
+;;    "TAB n" '(persp-switch :which-key "Switch perspective")
+;;    "TAB k" '(persp-kill :which-key "Kill perspective")
+;;    "TAB l" '(persp-next :which-key "Next perspective")
+;;    "TAB h" '(persp-prev :which-key "Previous perspective")
 
-  (defun persp-buffer-menu ()
-    (interactive)
-    (with-persp-buffer-list () (buffer-menu)))
+;;    "TAB 1" (lambda () (interactive) (casmacs-persp-switch-by-index 0))
+;;    "TAB 2" (lambda () (interactive) (casmacs-persp-switch-by-index 1))
+;;    "TAB 3" (lambda () (interactive) (casmacs-persp-switch-by-index 2))
+;;    "TAB 4" (lambda () (interactive) (casmacs-persp-switch-by-index 3))
+;;    "TAB 5" (lambda () (interactive) (casmacs-persp-switch-by-index 4))
+;;    "TAB 6" (lambda () (interactive) (casmacs-persp-switch-by-index 5))
+;;    "TAB 7" (lambda () (interactive) (casmacs-persp-switch-by-index 6))
+;;    "TAB 8" (lambda () (interactive) (casmacs-persp-switch-by-index 7))
+;;    "TAB 9" (lambda () (interactive) (casmacs-persp-switch-by-index 8))
+;;    "TAB 0" (lambda () (interactive) (casmacs-persp-switch-by-index nil)))
+;;   :custom
+;;   (persp-autokill-buffer-on-remove 'kill-weak)
+;;   (persp-auto-resume-time 0.1)
+;;   (add-to-list 'persp-save-buffer-functions #'casmacs-persp-ignore-none-persp)
+;;   :init
+;;   (defun persp-ibuffer ()
+;;     (interactive)
+;;     (with-persp-buffer-list () (ibuffer)))
 
-  (defun my-persp-switch-by-index (index)
-    "Switch to perspective by index, if the index is larger than the last perspecive or nil, switch to last perspective"
-    (let* ((persps (reverse (butlast (persp-persps))))
-           (selected (if index
-                         (nth index persps)
-                       (car (last persps)))))
-      (if selected
-          (persp-switch (safe-persp-name selected))
-        (persp-switch (safe-persp-name (car (last persps)))))))
+;;   (defun casmacs-persp-switch-by-index (index)
+;;     "Switch to perspective by index, if the index is larger than the last perspecive or nil, switch to last perspective"
+;;     (let* ((persps (reverse (butlast (persp-persps))))
+;;            (selected (if index
+;;                          (nth index persps)
+;;                        (car (last persps)))))
+;;       (if selected
+;;           (persp-switch (safe-persp-name selected))
+;;         (persp-switch (safe-persp-name (car (last persps)))))))
 
-  (defun my-persp-ignore-none-persp (buffer)
-    (when (not (persp--buffer-in-persps buffer))
-      'skip)))
+;;   (defun casmacs-persp-ignore-none-persp (buffer)
+;;     (when (not (persp--buffer-in-persps buffer))
+;;       'skip)))
 
 
 (setq global-auto-revert-non-file-buffers t)
@@ -483,6 +380,9 @@
 
 (add-hook 'prog-mode-hook #'electric-indent-mode)
 
+(use-package emacs
+  :hook ((prog-mode html-mode cider-repl-mode) . electric-pair-local-mode))
+
 (setq tramp-default-method "ssh")
 
 (setq-default indent-tabs-mode nil)
@@ -492,9 +392,6 @@
   (evil-commentary-mode))
 
 (setq-default show-trailing-whitespace t)
-
-(use-package emacs
-  :hook ((prog-mode cider-repl-mode) . electric-pair-local-mode))
 
 (use-package lispyville
   :hook ((lisp-mode
@@ -515,10 +412,6 @@
 (use-package origami
   :hook (yaml-mode . origami-mode))
 
-(use-package envrc
-  :init
-  (envrc-global-mode))
-
 (use-package marginalia
   :init
   (marginalia-mode))
@@ -531,7 +424,7 @@
 
 (use-package vertico
   :preface
-  (defun my-minibuffer-backward-kill (arg)
+  (defun casmacs-minibuffer-backward-kill (arg)
     "When minibuffer is completing a file name delete up to parent
 folder, otherwise delete a word"
     (interactive "p")
@@ -548,12 +441,15 @@ folder, otherwise delete a word"
             "C-k" 'vertico-previous
             "C-f" 'vertico-exit)
   (:keymaps 'minibuffer-local-map
-            "C-<backspace>" 'my-minibuffer-backward-kill)
+            "C-<backspace>" 'casmacs-minibuffer-backward-kill)
   :custom
   (minibuffer-prompt-properties '(read-only t cursor-intangible t face minibuffer-prompt))
   (vertico-cycle t)
   :init
   (vertico-mode))
+
+;; TODO:
+;; https://github.com/emacsmirror/corfu-candidate-overlay
 
 (use-package corfu
   :preface
@@ -602,100 +498,24 @@ folder, otherwise delete a word"
     (orderless-style-dispatchers '(orderless-fast-dispatch))
     (orderless-matching-styles '(orderless-literal orderless-regexp))))
 
-(use-package consult
-  :after persp-mode
-  :config
-  (consult-customize consult--source-buffer :hidden t :default nil)
-
-  (defvar consult--source-perspective
-    (list :name     "Persp Buffers"
-          :narrow   ?s
-          :category 'buffer
-          :state    #'consult--buffer-state
-          :default  t
-          :items    (lambda () (seq-map #'buffer-name (persp-buffer-list)))))
-
-  (push consult--source-perspective consult-buffer-sources)
-  :general
-  (:keymaps 'minibuffer-local-map
-   "C-r" 'consult-history)
-  (general-leader
-    "/" '(consult-ripgrep :which-key "Ripgrep")
-    "SPC" '(consult-buffer :which-key "All Buffers")
-    "si" '(consult-imenu :which-key "Imenu")
-    "fF" '(consult-find :which-key "Find files")))
-
-(use-package consult-project-extra
-  :after consult
-  :demand t
-  :config
-  (consult-customize
-   consult-project-extra--source-file
-   :hidden t
-   :default nil
-   :narrow ?f)
-  (push consult-project-extra--source-file consult-buffer-sources))
 
 ;;; Languages
 
-(use-package scad-mode)
 
-(use-package markdown-mode)
 
-(use-package rust-mode)
 
-(use-package yuck-mode)
 
-(use-package sly)
 
-(use-package clojure-mode)
 
-(use-package cider
-  :hook (clojure-mode . cider-mode)
-  :custom
-  (cider-clojure-cli-global-options "-Adev")
-  (cider-completion-annotations-include-ns 'always)
-  (cider-repl-display-help-banner nil)
-  (cider-eval-result-duration 'change)
-  (cider-repl-pop-to-buffer-on-connect 'display-only)
-  (cider-xref-fn-depth -100)
-  (cider-offer-to-open-cljs-app-in-browser nil)
-  :general
-  (general-local-leader
-    :keymaps 'clojure-mode-map
-    "e" '(nil :which-key "Eval")
-    "eb" '(cider-eval-buffer :which-key "Eval buffer")
-    "ed" '(cider-debug-defun-at-point :which-key "Eval debug")
-    "'" '(cider-connect-clj :which-key "Connect clj")
-    "\"" '(cider-connect-cljs :which-key "Connect cljs")
-    "j" '(cider-jack-in-clj :which-key "Jack-in clj")
-    "J" '(cider-jack-in-cljs :which-key "Jack-in cljs"))
-  :config
-  (add-to-list 'display-buffer-alist '("\\*cider-repl.*"
-                                       (display-buffer-in-side-window)
-                                       (window-height  . 0.20)
-                                       (preserve-size . (nil . t)))))
 
-(use-package jarchive
-  :hook (clojure-mode . jarchive-mode))
 
-(use-package nix-mode)
 
-(use-package lua-mode)
 
-(use-package haskell-mode)
 
-(use-package scala-mode)
 
-(use-package go-mode)
 
-(use-package typescript-mode
-  :custom
-  (typescript-indent-level 2))
 
-(use-package yaml-mode)
 
-(use-package dockerfile-mode)
 
 ;;;; Tools
 
@@ -728,7 +548,7 @@ folder, otherwise delete a word"
 (use-package magit
   :hook (git-commit-mode . evil-insert-state)
   :custom
-  (magit-display-buffer-function #'my-magit-buffer-function)
+  (magit-display-buffer-function #'casmacs-magit-buffer-function)
   (transient-display-buffer-action '(display-buffer-below-selected))
   (magit-diff-refine-hunk 'all)
   :general
@@ -736,7 +556,7 @@ folder, otherwise delete a word"
     "g" '(:ignore t :which-key "Git")
     "gg" '(magit :which-key "Magit"))
   :init
-  (defun my-magit-buffer-function (buffer)
+  (defun casmacs-magit-buffer-function (buffer)
     (let ((buffer-mode (buffer-local-value 'major-mode buffer)))
       (display-buffer
        buffer (cond
@@ -795,10 +615,11 @@ folder, otherwise delete a word"
            python-mode)
           .
           eglot-ensure)
-         (eglot-managed-mode . my-eglot-lower-capf-prio))
+         (eglot-managed-mode . casmacs-eglot-lower-capf-prio))
   :custom
   (eglot-confirm-server-initiated-edits nil)
   (max-mini-window-height 2)
+  (eglot-code-action-indicator "✓")
   :general
   (general-local-leader
     :keymaps 'eglot-mode-map
@@ -811,14 +632,45 @@ folder, otherwise delete a word"
                                       (lambda ()
                                         (eglot-code-action-organize-imports (point-min)))
                                       nil t)))
-  (defun my-eglot-lower-capf-prio ()
+  (defun casmacs-eglot-lower-capf-prio ()
     "Make the eglot capf have lower priority"
     (when (boundp 'cider-mode)
       (when cider-mode
         (remove-from-list completion-at-point-functions t)
         (remove-from-list completion-at-point-functions #'eglot-completion-at-point)
         (add-to-list 'completion-at-point-functions #'eglot-completion-at-point t)
-        (add-to-list 'completion-at-point-functions t t)))))
+        (add-to-list 'completion-at-point-functions t t))))
+  :config
+  (setq-default
+   eglot-workspace-configuration
+   '(:basedpyright
+     (:typeCheckingMode "standard")
+     :basedpyright.analysis
+     (:diagnosticSeverityOverrides
+      (:reportUnusedCallResult "none")
+      :inlayHints (:callArgumentNames :json-false))))
+
+  (defclass eglot-deno (eglot-lsp-server) ()
+    :documentation "A custom class for deno lsp.")
+
+  (cl-defmethod eglot-initialization-options ((server eglot-deno))
+    "Passes through required deno initialization options"
+    (list :enable t
+    :lint t))
+
+  (defclass eglot-volar (eglot-lsp-server) ()
+    :documentation "A custom class for volar")
+
+  (cl-defmethod eglot-initialization-options ((server eglot-volar))
+    "Passes through required volar initialization options"
+    (let ((tsdk-path
+           (expand-file-name
+            "lib"
+            (string-trim-right (shell-command-to-string "npm list --parseable typescript | tail -n1")))))
+      `(:typescript (:tsdk ,tsdk-path)
+                    :vue (:hybridMode :json-false))))
+  (add-to-list 'eglot-server-programs '((js-mode typescript-mode (typescript-ts-base-mode :language-id "typescript")) . (eglot-deno "deno" "lsp")))
+  (add-to-list 'eglot-server-programs '(vue-mode . (eglot-volar "vue-language-server" "--stdio"))))
 
 (use-package breadcrumb
   :hook (eglot-managed-mode . breadcrumb-local-mode))
@@ -859,3 +711,19 @@ folder, otherwise delete a word"
 
 (use-package eat
   :hook (eshell-load . eat-eshell-mode))
+
+(use-package aidermacs)
+
+(use-package eat
+  :hook (eshell-load . eat-eshell-mode))
+
+(require 'cas-emacs-langs)
+(require 'cas-emacs-evil)
+(require 'cas-emacs-general)
+(require 'cas-emacs-modeline)
+(require 'cas-emacs-perspective)
+(require 'cas-emacs-consult)
+(require 'cas-emacs-theme)
+
+(use-package envrc
+  :hook (after-init . envrc-global-mode))
