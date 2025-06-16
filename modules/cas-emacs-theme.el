@@ -42,10 +42,10 @@
                          (fg-mode-line-active     fg-main)
                          (border-mode-line-active blue-intense)
                          (bg-completion bg-inactive))))
-    (setq modus-themes-common-palette-overrides modus-palette
+    (setq modus-themes-common-palette-overrides nil
           ;; modus-themes-completions ((matches . ()))
           )
     )
-  (load-theme casmacs-light-theme t))
+  (load-theme casmacs-dark-theme t))
 
 (provide 'cas-emacs-theme)

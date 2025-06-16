@@ -40,48 +40,53 @@
   "Persp indicator color"
   :group 'cas-modeline-faces)
 
+(defface cas-modeline-evil-state
+  '((t (:inverse-video t)))
+  "Evil state indicator"
+  :group 'cas-modeline-faces)
+
 (defface cas-modeline-evil-macro-indicator
-  '((t (:inherit (cas-modeline font-lock-builtin-face))))
+  '((t (:inherit (cas-modeline font-lock-builtin-face cas-modeline-evil-state))))
   "Macro indicator color"
   :group 'cas-modeline-faces)
 
 (defface cas-modeline-evil-emacs-state
-  '((t (:inherit (cas-modeline font-lock-builtin-face))))
+  '((t (:inherit (cas-modeline font-lock-builtin-face cas-modeline-evil-state))))
   "Emacs state color"
   :group 'cas-modeline-faces)
 
 (defface cas-modeline-evil-insert-state
-  '((t (:inherit (cas-modeline font-lock-keyword-face))))
+  '((t (:inherit (cas-modeline font-lock-keyword-face cas-modeline-evil-state))))
   "Insert state color"
   :group 'cas-modeline-faces)
 
 (defface cas-modeline-evil-motion-state
-  '((t (:inherit (cas-modeline font-lock-doc-face) :slant normal)))
+  '((t (:inherit (cas-modeline font-lock-doc-face cas-modeline-evil-state) :slant normal)))
   "Motion state color"
   :group 'cas-modeline-faces)
 
 (defface cas-modeline-evil-normal-state
-  '((t (:inherit (cas-modeline cas-modeline-info))))
+  '((t (:inherit (cas-modeline cas-modeline-info cas-modeline-evil-state))))
   "Normal state color"
   :group 'cas-modeline-faces)
 
 (defface cas-modeline-evil-operator-state
-  '((t (:inherit (cas-modeline mode-line))))
+  '((t (:inherit (cas-modeline mode-line cas-modeline-evil-state))))
   "Operator state color"
   :group 'cas-modeline-faces)
 
 (defface cas-modeline-evil-visual-state
-  '((t (:inherit (cas-modeline cas-modeline-warning))))
+  '((t (:inherit (cas-modeline cas-modeline-warning cas-modeline-evil-state))))
   "Visual state color"
   :group 'cas-modeline-faces)
 
 (defface cas-modeline-evil-replace-state
-  '((t (:inherit (cas-modeline cas-modeline-urgent))))
+  '((t (:inherit (cas-modeline cas-modeline-urgent cas-modeline-evil-state))))
   "Replace state color"
   :group 'cas-modeline-faces)
 
 (defface cas-modeline-minibuffer-state
-  '((t (:inherit (cas-modeline cas-modeline-urgent))))
+  '((t (:inherit (cas-modeline cas-modeline-urgent cas-modeline-evil-state))))
   "Minibuffer state color"
   :group 'cas-modeline-faces)
 
@@ -175,7 +180,7 @@
     (if (cas-modeline--window-selected-p)
         (if anzu-state
             (propertize anzu-state 'face 'cas-modeline-info)
-          (format "%s" (cas-modeline--evil-state-tag :dot)))
+          (format "%s " (cas-modeline--evil-state-tag :long)))
       "")))
 
 (defvar-local cas-modeline-evil

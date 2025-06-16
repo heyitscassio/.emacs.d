@@ -79,9 +79,18 @@
             :advice evil-goggles--join-advice)))
   (evil-goggles-use-diff-faces))
 
+
 (use-package evil-surround
   :after evil
+  :hook prog-mode
   :init
-  (global-evil-surround-mode))
+  (setq evil-surround-pairs-alist
+        `((?\( '("(" . ")"))
+          (?\[ '("[" . "]"))
+          (?\{ '("{" . "}"))
+          (?\) '("( " . " ))"))
+          (?\] '("[ " . " ])"))
+          (?\} '("{ " . " })"))
+          ,@evil-surround-pairs-alist)))
 
-(provide 'cas-emacs-evil)
+(provide  'cas-emacs-evil)

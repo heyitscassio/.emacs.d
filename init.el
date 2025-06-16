@@ -548,41 +548,13 @@ folder, otherwise delete a word"
 (use-package magit
   :hook (git-commit-mode . evil-insert-state)
   :custom
-  (magit-display-buffer-function #'casmacs-magit-buffer-function)
+  (magit-display-buffer-function #'magit-display-buffer-same-window-except-diff-v1)
   (transient-display-buffer-action '(display-buffer-below-selected))
   (magit-diff-refine-hunk 'all)
   :general
   (general-leader
     "g" '(:ignore t :which-key "Git")
-    "gg" '(magit :which-key "Magit"))
-  :init
-  (defun casmacs-magit-buffer-function (buffer)
-    (let ((buffer-mode (buffer-local-value 'major-mode buffer)))
-      (display-buffer
-       buffer (cond
-               ((and (eq buffer-mode 'magit-status-mode)
-                     (get-buffer-window buffer))
-                '(display-buffer-reuse-window))
-               ;; Any magit buffers opened from a commit window should open below
-               ;; it. Also open magit process windows below.
-               ((or (bound-and-true-p git-commit-mode)
-                    (eq buffer-mode 'magit-process-mode))
-                (let ((size (if (eq buffer-mode 'magit-process-mode)
-                                0.35
-                              0.7)))
-                  `(display-buffer-below-selected
-                    . ((window-height . ,(truncate (* (window-height) size)))))))
-
-               ;; Everything else should reuse the current window.
-               ((or (not (derived-mode-p 'magit-mode))
-                    (not (memq (with-current-buffer buffer major-mode)
-                               '(magit-process-mode
-                                 magit-revision-mode
-                                 magit-diff-mode
-                                 magit-stash-mode
-                                 magit-status-mode))))
-                '(display-buffer-same-window))
-               nil)))))
+    "gg" '(magit :which-key "Magit")))
 
 (use-package restclient
   :general
@@ -716,6 +688,11 @@ folder, otherwise delete a word"
 
 (use-package eat
   :hook (eshell-load . eat-eshell-mode))
+
+(use-package ediff
+  :ensure nil
+  :custom
+  (ediff-window-setup-function 'ediff-setup-windows-plain))
 
 (require 'cas-emacs-langs)
 (require 'cas-emacs-evil)
