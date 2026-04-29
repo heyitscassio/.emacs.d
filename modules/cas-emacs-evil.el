@@ -1,6 +1,8 @@
 ;; -*- lexical-binding: t; -*-
 
-(use-package undo-fu)
+(use-package undo-fu
+  :custom
+  (undo-limit 1600000))
 
 (use-package undo-fu-session
   :init
@@ -20,9 +22,11 @@
 
 (use-package evil
   :hook (emacs-lisp-mode . (lambda () (setq evil-lookup-func #'casmacs-elisp-lookup)))
+  :general
+  (:keymaps 'evil-window-map
+   "C-w" #'other-window)
   :custom
   (evil-want-Y-yank-to-eol t)
-  (evil-want-keybinding nil)
   (evil-want-integration t)
   (evil-want-C-u-scroll t)
   (evil-want-C-i-jump t)
@@ -36,11 +40,13 @@
       (if sym
           (describe-symbol (symbol-at-point))
         (message "Invalid symbol"))))
-  (evil-mode))
+  (setq evil-want-keybinding nil)
+  :config
+  (evil-mode 1))
 
 (use-package evil-collection
   :after evil
-  :init
+  :config
   (evil-collection-init))
 
 (use-package evil-anzu
@@ -83,7 +89,7 @@
 (use-package evil-surround
   :after evil
   :hook prog-mode
-  :init
+  :config
   (setq evil-surround-pairs-alist
         `((?\( '("(" . ")"))
           (?\[ '("[" . "]"))
@@ -92,5 +98,17 @@
           (?\] '("[ " . " ])"))
           (?\} '("{ " . " })"))
           ,@evil-surround-pairs-alist)))
+
+(use-package evil-lion
+  :config
+  (evil-lion-mode))
+
+(use-package ace-window
+  :init
+  (global-set-key [remap other-window] #'ace-window)
+  :config
+  (setq aw-keys '(?r ?s ?t ?h ?n ?i ?a ?o))
+  (setq aw-scope 'frame
+        aw-background t))
 
 (provide  'cas-emacs-evil)

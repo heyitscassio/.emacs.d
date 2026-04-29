@@ -41,9 +41,16 @@
 (setq user-emacs-directory (expand-file-name "~/.cache/emacs/")
       url-history-file (expand-file-name "url/history" user-emacs-directory))
 
+;; (locate-user-emacs-file "oi")
+
 (use-package dired
   :ensure nil
-  :custom (dired-use-ls-dired nil))
+  :custom
+  (dired-use-ls-dired nil)
+  (dired-listing-switches "-alh --time-style=long-iso")
+  :config
+  (when (eq system-type 'darwin)
+    (setq insert-directory-program "/opt/homebrew/bin/gls")))
 
 ;; Use no-littering to automatically set common paths to the new user-emacs-directory
 (use-package no-littering
@@ -65,6 +72,11 @@
 (load custom-file t)
 
 ;; Functions
+
+(defun cas-emacs-hide-trailing-whitespace ()
+  "Hide trailing whitespace."
+  (interactive)
+  (setq-local show-trailing-whitespace nil))
 
 (defun casmacs-open-in-finder (filename &optional _)
   (interactive
@@ -122,7 +134,7 @@
     "hv" '(describe-variable :which-key "Describe Variable")
     "hk" '(describe-key :which-key "Describe Key")
 
-    "o" '(nil :which-key "Apps")
+    "o" '(nil :which-key "Open")
     "op" '(nil :which-key "Profiler")
     "ops" '(profiler-start :which-key "Profiler start")
     "opk" '(profiler-stop :which-key "Profiler stop")
@@ -136,7 +148,7 @@
 (scroll-bar-mode -1)
 (tool-bar-mode -1)
 (tooltip-mode -1)
-;; (fringe-mode '(5 . 5))
+(fringe-mode '(nil . 0))
 
 (if (not (eq system-type 'darwin))
     (menu-bar-mode -1))
@@ -234,8 +246,6 @@
 
 (advice-add 'enable-theme :after #'run-after-enable-theme-hook)
 
-(native-comp-available-p)
-
 (when (eq system-type 'darwin)
   (setq mac-pass-command-to-system nil
         mac-command-modifier 'control
@@ -292,11 +302,7 @@
     (visual-line-mode 1))
   :config
   (require 'org-tempo)
-  ;; (require 'ox-latex)
-
-  (setq org-agenda-files '(
-                           ;; "~/doc/agendas"
-                           "~/Documents"))
+  (setq org-agenda-files '("~/Documents"))
 
   (add-to-list 'org-structure-template-alist '("sh" . "src sh"))
   (add-to-list 'org-structure-template-alist '("el" . "src emacs-lisp"))
@@ -307,64 +313,6 @@
   (add-to-list 'org-structure-template-alist '("go" . "src go"))
   (add-to-list 'org-structure-template-alist '("yaml" . "src yaml"))
   (add-to-list 'org-structure-template-alist '("json" . "src json")))
-
-;; (use-package casmacs-modeline
-;;   :straight nil
-;;   :config
-;;   (setq mode-line-compact nil)
-;;   (setq-default mode-line-format casmacs-modeline-format))
-
-;; (use-package keycast)
-
-;; (use-package persp-mode
-;;   ;; :after magit
-;;   :hook
-;;   (window-setup . persp-mode)
-;;   :general
-;;   (general-leader
-;;    "bD" '(persp-kill-buffer :which-key "Kill buffer")
-;;    "bI" '(persp-ibuffer :which-key "Ibuffer")
-;;    "TAB" '(:ignore t :which-key "Perspective")
-;;    "TAB n" '(persp-switch :which-key "Switch perspective")
-;;    "TAB k" '(persp-kill :which-key "Kill perspective")
-;;    "TAB l" '(persp-next :which-key "Next perspective")
-;;    "TAB h" '(persp-prev :which-key "Previous perspective")
-
-;;    "TAB 1" (lambda () (interactive) (casmacs-persp-switch-by-index 0))
-;;    "TAB 2" (lambda () (interactive) (casmacs-persp-switch-by-index 1))
-;;    "TAB 3" (lambda () (interactive) (casmacs-persp-switch-by-index 2))
-;;    "TAB 4" (lambda () (interactive) (casmacs-persp-switch-by-index 3))
-;;    "TAB 5" (lambda () (interactive) (casmacs-persp-switch-by-index 4))
-;;    "TAB 6" (lambda () (interactive) (casmacs-persp-switch-by-index 5))
-;;    "TAB 7" (lambda () (interactive) (casmacs-persp-switch-by-index 6))
-;;    "TAB 8" (lambda () (interactive) (casmacs-persp-switch-by-index 7))
-;;    "TAB 9" (lambda () (interactive) (casmacs-persp-switch-by-index 8))
-;;    "TAB 0" (lambda () (interactive) (casmacs-persp-switch-by-index nil)))
-;;   :custom
-;;   (persp-autokill-buffer-on-remove 'kill-weak)
-;;   (persp-auto-resume-time 0.1)
-;;   (add-to-list 'persp-save-buffer-functions #'casmacs-persp-ignore-none-persp)
-;;   :init
-;;   (defun persp-ibuffer ()
-;;     (interactive)
-;;     (with-persp-buffer-list () (ibuffer)))
-
-;;   (defun casmacs-persp-switch-by-index (index)
-;;     "Switch to perspective by index, if the index is larger than the last perspecive or nil, switch to last perspective"
-;;     (let* ((persps (reverse (butlast (persp-persps))))
-;;            (selected (if index
-;;                          (nth index persps)
-;;                        (car (last persps)))))
-;;       (if selected
-;;           (persp-switch (safe-persp-name selected))
-;;         (persp-switch (safe-persp-name (car (last persps)))))))
-
-;;   (defun casmacs-persp-ignore-none-persp (buffer)
-;;     (when (not (persp--buffer-in-persps buffer))
-;;       'skip)))
-
-
-(setq global-auto-revert-non-file-buffers t)
 
 (use-package emacs
   :init
@@ -412,112 +360,20 @@
 (use-package origami
   :hook (yaml-mode . origami-mode))
 
-(use-package marginalia
-  :init
-  (marginalia-mode))
 
 (use-package emacs
   :custom
-  (history-length 25)
+  (history-length 100)
+  (read-extended-command-predicate #'command-completion-default-include-p)
+  (tab-always-indent 'complete)
   :init
   (savehist-mode 1))
 
-(use-package vertico
-  :preface
-  (defun casmacs-minibuffer-backward-kill (arg)
-    "When minibuffer is completing a file name delete up to parent
-folder, otherwise delete a word"
-    (interactive "p")
-    (if minibuffer-completing-file-name
-        (if (string-match-p "/." (minibuffer-contents))
-            (zap-up-to-char (- arg) ?/)
-          (delete-minibuffer-contents))
-      (kill-word (- arg))))
-  :hook
-  (minibuffer-setup . cursor-intangible-mode)
-  :general
-  (:keymaps 'vertico-map
-            "C-j" 'vertico-next
-            "C-k" 'vertico-previous
-            "C-f" 'vertico-exit)
-  (:keymaps 'minibuffer-local-map
-            "C-<backspace>" 'casmacs-minibuffer-backward-kill)
+(use-package emacs
   :custom
-  (minibuffer-prompt-properties '(read-only t cursor-intangible t face minibuffer-prompt))
-  (vertico-cycle t)
+  (global-auto-revert-non-file-buffers t)
   :init
-  (vertico-mode))
-
-;; TODO:
-;; https://github.com/emacsmirror/corfu-candidate-overlay
-
-(use-package corfu
-  :preface
-  (defun corfu-enable-in-minibuffer ()
-    "Enable Corfu in the minibuffer if `completion-at-point' is bound."
-    (when (where-is-internal #'completion-at-point (list (current-local-map)))
-      (corfu-mode 1)))
-  :hook (((prog-mode eshell-mode cider-repl-mode) . corfu-mode)
-         (corfu-mode . corfu-popupinfo-mode)
-         (minibuffer-setup . corfu-enable-in-minibuffer))
-  :custom
-  (corfu-cycle t)
-  (corfu-auto t)
-  (corfu-popupinfo-delay '(1.0 . 0.5))
-  (corfu-auto-delay 0)
-  (corfu-auto-prefix 3)
-  (corfu-quit-no-match 'separator)
-  (corfu-preselect 'prompt)
-  (corfu-preview-current 'insert)
-  :general
-  (:keymaps 'corfu-map
-            "C-s" 'corfu-quit
-            "<tab>" 'corfu-next
-            "<backtab>" 'corfu-previous))
-
-(use-package kind-icon
-  :after corfu
-  :custom
-  (kind-icon-use-icons nil)
-  :config
-  (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
-
-(use-package cape
-  :init
-  (add-to-list 'completion-at-point-functions #'cape-file))
-
-(use-package orderless
-  :custom
-  (completion-styles '(orderless-fast basic))
-  (completion-category-overrides '((file (styles . (partial-completion)))))
-  :config
-  (defun orderless-fast-dispatch (word index total)
-    (and (= index 0) (= total 1) (length< word 4)
-         (cons 'orderless-literal-prefix word)))
-  (orderless-define-completion-style orderless-fast
-    (orderless-style-dispatchers '(orderless-fast-dispatch))
-    (orderless-matching-styles '(orderless-literal orderless-regexp))))
-
-
-;;; Languages
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-;;;; Tools
+  (global-auto-revert-mode))
 
 (use-package pdf-tools
   :mode ("\\.pdf\\'" . pdf-view-mode)
@@ -545,6 +401,7 @@ folder, otherwise delete a word"
   (require 'emms-player-mpd)
   (emms-all))
 
+(setq magit-push-refspecs-history)
 (use-package magit
   :hook (git-commit-mode . evil-insert-state)
   :custom
@@ -555,6 +412,10 @@ folder, otherwise delete a word"
   (general-leader
     "g" '(:ignore t :which-key "Git")
     "gg" '(magit :which-key "Magit")))
+
+;; (use-package git-link
+;;   :custom
+;;   (git-link-open-in-browser t))
 
 (use-package restclient
   :general
@@ -573,32 +434,51 @@ folder, otherwise delete a word"
                                        (window-height  . 0.20)
                                        (preserve-size . (nil . t)))))
 (use-package eldoc
+  :custom
+  (eldoc-documentation-strategy #'eldoc-documentation-compose-eagerly)
   :config
   (add-to-list 'display-buffer-alist '("\\*eldoc\\*"
                                        (display-buffer-in-side-window)
                                        (window-height  . 0.20)
                                        (preserve-size . (nil . t)))))
 
+
+
+(use-package project
+  :custom
+  (project-prompter #'project-prompt-project-name)
+  (project-vc-extra-root-markers '(".project" ".projectile")))
+
 (use-package eglot
-  :hook (((clojure-mode
-           clojurescript-mode
-           go-mode
-           c-mode
-           python-mode)
-          .
-          eglot-ensure)
-         (eglot-managed-mode . casmacs-eglot-lower-capf-prio))
+  :after cape
+  :hook
+  (;; ((clojure-mode
+   ;;   clojurescript-mode
+   ;;   go-mode
+   ;;   c-mode
+   ;;   python-mode)
+   ;;  .
+   ;;  eglot-ensure)
+   (eglot-managed-mode . casmacs-eglot-lower-capf-prio))
   :custom
   (eglot-confirm-server-initiated-edits nil)
   (max-mini-window-height 2)
   (eglot-code-action-indicator "✓")
+  (eglot-report-progress nil)
+  (eglot-connect-timeout 240)
   :general
   (general-local-leader
     :keymaps 'eglot-mode-map
     "c" '(nil :which-key "Eglot")
     "cc" '(eglot-code-actions :which-key "Code Actions")
-    "cr" '(eglot-rename :which-key "Rename"))
+    "cr" '(eglot-rename :which-key "Rename")
+    "cf" '(eglot-format :which-key "Format"))
   :init
+  ;; (advice-add #'eglot-completion-at-point :around
+  ;;             (lambda (orig &rest args)
+  ;;               (let ((result (apply orig args)))
+  ;;                 (message "eglot capf result: %S" result)
+  ;;                 result)))
   (add-hook 'go-mode-hook (lambda ()
                             (add-hook 'before-save-hook
                                       (lambda ()
@@ -613,14 +493,14 @@ folder, otherwise delete a word"
         (add-to-list 'completion-at-point-functions #'eglot-completion-at-point t)
         (add-to-list 'completion-at-point-functions t t))))
   :config
+  (advice-add #'eglot-completion-at-point :around #'cape-wrap-buster)
+  (add-to-list 'eglot-server-programs
+               '((python-mode python-ts-mode)
+                 "basedpyright-langserver" "--stdio"))
   (setq-default
    eglot-workspace-configuration
    '(:basedpyright
-     (:typeCheckingMode "standard")
-     :basedpyright.analysis
-     (:diagnosticSeverityOverrides
-      (:reportUnusedCallResult "none")
-      :inlayHints (:callArgumentNames :json-false))))
+     (:typeCheckingMode "standard")))
 
   (defclass eglot-deno (eglot-lsp-server) ()
     :documentation "A custom class for deno lsp.")
@@ -652,7 +532,7 @@ folder, otherwise delete a word"
   (setq dape-buffer-window-arrangement 'left)
   :general
   (general-local-leader
-    "d" '(nil :which-key "Dape")
+    "d" '(nil :which-key "debug")
     "dr" '(dape-restart :which-key "Restart")
     "dt" '(dape-breakpoint-toggle :which-key "Toggle breakpoint")
     "dl" '(dape-breakpoint-log :which-key "Log breakpoint"))
@@ -668,7 +548,6 @@ folder, otherwise delete a word"
                  :justMyCode nil
                  :showReturnValue t)))
 
-
 (use-package sideline-flymake
   :custom
   (sideline-flymake-display-mode 'line))
@@ -682,17 +561,77 @@ folder, otherwise delete a word"
   :hook (prog-mode . yas-minor-mode))
 
 (use-package eat
-  :hook (eshell-load . eat-eshell-mode))
+  :hook ((eshell-load . eat-eshell-mode)
+         (eat-mode . cas-emacs-hide-trailing-whitespace))
+  :config
+  (defun sm-replace-problem-chars (args)
+    (let ((terminal (nth 0 args))
+          (output (nth 1 args))
+          (sm-subsitutions '((?✢ . ?+)
+                             (?✳ . ?*)
+                             (?∗ . ?*)
+                             (?✻ . ?*)
+                             (?✽ . ?*)
+                             (?🤖 . ?*))))
+      (dolist (sub sm-subsitutions)
+        (setq output (subst-char-in-string (car sub) (cdr sub) output)))
+      (list terminal output)))
 
-(use-package aidermacs)
-
-(use-package eat
-  :hook (eshell-load . eat-eshell-mode))
+  (advice-add 'eat-term-process-output :filter-args #'sm-replace-problem-chars))
 
 (use-package ediff
   :ensure nil
   :custom
   (ediff-window-setup-function 'ediff-setup-windows-plain))
+
+(use-package envrc
+  :hook (after-init . envrc-global-mode))
+
+(use-package vterm
+  :hook ((vterm-mode . cas-emacs-hide-trailing-whitespace)
+         (vterm-mode . cas-emacs--vterm-font-setup))
+  :preface
+  (defun cas-emacs--vterm-font-setup ()
+    "Configure font settings specifically for vterm buffers, workaround claude-code."
+    (let ((tbl (or buffer-display-table (setq buffer-display-table (make-display-table)))))
+      (dolist (pair
+               '((#x273B . ?*)   ; ✻ TEARDROP-SPOKED ASTERISK
+                 (#x273D . ?*)   ; ✽ HEAVY TEARDROP-SPOKED ASTERISK
+                 (#x2722 . ?+)   ; ✢ FOUR TEARDROP-SPOKED ASTERISK
+                 (#x2736 . ?+)   ; ✶ SIX-POINTED BLACK STAR
+                 (#x2733 . ?*))) ; ✳ EIGHT SPOKED ASTERISK
+        (aset tbl (car pair) (vector (cdr pair)))))))
+
+(use-package monet
+  :vc (:url "https://github.com/stevemolitor/monet" :rev :newest))
+
+(use-package claude-code
+  :after monet
+  :vc (:url "https://github.com/stevemolitor/claude-code.el" :rev :newest)
+  :custom
+  (claude-code-terminal-backend 'vterm)
+  :config
+  ;; optional IDE integration with Monet
+  (add-hook 'claude-code-process-environment-functions #'monet-start-server-function)
+  (monet-mode 1)
+
+  (claude-code-mode)
+  :bind-keymap ("C-c c" . claude-code-command-map)
+
+  ;; Optionally define a repeat map so that "M" will cycle thru Claude auto-accept/plan/confirm modes after invoking claude-code-cycle-mode / C-c M.
+  :bind
+  (:repeat-map my-claude-code-map ("M" . claude-code-cycle-mode)))
+
+(use-package claude-code-ide
+  :vc (:url "https://github.com/manzaltu/claude-code-ide.el" :rev :newest)
+  :general
+  (general-leader
+    "occ" '(claude-code-ide-toggle :which-key "toggle claude ide")
+    "ocm" '(claude-code-ide-menu :which-key "claude ide menu"))
+  :custom
+  (claude-code-ide-terminal-backend 'eat)
+  :config
+  (claude-code-ide-emacs-tools-setup))
 
 (require 'cas-emacs-langs)
 (require 'cas-emacs-evil)
@@ -701,6 +640,4 @@ folder, otherwise delete a word"
 (require 'cas-emacs-perspective)
 (require 'cas-emacs-consult)
 (require 'cas-emacs-theme)
-
-(use-package envrc
-  :hook (after-init . envrc-global-mode))
+(require 'cas-emacs-completion)

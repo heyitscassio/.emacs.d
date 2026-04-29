@@ -90,6 +90,11 @@
   "Minibuffer state color"
   :group 'cas-modeline-faces)
 
+(defvar-local cas-modeline--buffer-state-cache nil)
+(defvar-local cas-modeline--vc-branch-cache nil)
+(defvar-local cas-modeline--cache-timer nil)
+(defvar flymake-mode nil)
+
 (defun cas-modeline--window-selected-p ()
   (let ((window (selected-window)))
     (or (eq window (old-selected-window))
@@ -170,10 +175,12 @@
 
 (defun cas-modeline--evil-macro ()
   (when-let ((macro evil-this-macro))
-    (propertize (format " @%c" macro)
-                'face
-                'cas-modeline-evil-macro-indicator
-                'mouse-face 'mode-line-highlight)))
+    (list
+     (propertize (format " @%c " macro)
+                 'face
+                 'cas-modeline-evil-macro-indicator
+                 'mouse-face 'mode-line-highlight)
+     " ")))
 
 (defun cas-modeline--evil ()
   (let ((anzu-state (anzu--update-mode-line)))
@@ -200,19 +207,6 @@
 (defvar-local cas-modeline-major-mode
   '(:eval (cas-modeline--major-mode)))
 
-(defun cas-modeline--buffer-state ()
-  (cond
-   ((let ((file-name (buffer-file-name)))
-      (and file-name (not (file-exists-p file-name))))
-    (propertize  "- " 'face 'cas-modeline-urgent))
-   ((buffer-modified-p) (propertize "* " 'face 'cas-modeline-warning))
-   (t nil)))
-
-(defvar-local cas-modeline-buffer-state
-  '(:eval (cas-modeline--buffer-state)))
-
-(defvar flymake-mode nil)
-
 (defun cas-modeline--flymake ()
   (when (and (bound-and-true-p flymake-mode)
            flymake-mode)
@@ -221,16 +215,11 @@
 (defvar-local cas-modeline-flymake
   '(:eval (cas-modeline--flymake)))
 
-(defun cas-modeline--vc-branch ()
-  (when-let* ((file (buffer-file-name))
-              (branch (vc-git--symbolic-ref file)))
-    (propertize (format " %s" branch)
-                'face
-                'cas-modeline-emphasis
-                'mouse-face 'mode-line-highlight)))
+(defvar-local cas-modeline-buffer-state
+  '(:eval cas-modeline--buffer-state-cache))
 
 (defvar-local cas-modeline-vc-branch
-  '(:eval (cas-modeline--vc-branch)))
+  '(:eval cas-modeline--vc-branch-cache))
 
 (defun cas-modeline--persp ()
   (when (and (featurep 'perspective) persp-mode (cas-modeline--window-selected-p))
@@ -247,6 +236,29 @@
 
 (defvar-local cas-modeline-project
   '(:eval (cas-modeline--project)))
+
+(defun cas-modeline--refresh-cache ()
+  "Recompute cached modeline values."
+  (setq cas-modeline--buffer-state-cache
+        (cond
+         ((let ((file-name (buffer-file-name)))
+            (and file-name (not (file-exists-p file-name))))
+          (propertize "- " 'face 'cas-modeline-urgent))
+         ((buffer-modified-p)
+          (propertize "* " 'face 'cas-modeline-warning))
+         (t nil)))
+
+  (setq cas-modeline--vc-branch-cache
+        (when-let* ((file (buffer-file-name))
+                    (branch (ignore-errors (vc-git--symbolic-ref file))))
+          (propertize (format " %s" branch)
+                      'face 'cas-modeline-emphasis
+                      'mouse-face 'mode-line-highlight))))
+
+(defun cas-modeline--ensure-cache-timer ()
+  (unless cas-modeline--cache-timer
+    (setq cas-modeline--cache-timer
+          (run-with-idle-timer 0.5 t #'cas-modeline--refresh-cache))))
 
 (defvar-local cas-modeline-left
     (list cas-modeline-evil
@@ -272,6 +284,7 @@
 (define-minor-mode cas-modeline-mode
   "Toggle cas- modeline"
   :group 'cas-modeline
+
   :global t
   :lighter nil
   (if cas-modeline-mode
@@ -280,12 +293,18 @@
         (setq-default mode-line-format (list "%e" cas-modeline-format))
         (dolist (buf (buffer-list))
           (with-current-buffer buf
-            (setq mode-line-format (list "%e" cas-modeline-format)))))
+            (setq mode-line-format (list "%e" cas-modeline-format))))
+        (add-hook 'find-file-hook #'cas-modeline--ensure-cache-timer)
+        (add-hook 'after-save-hook #'cas-modeline--refresh-cache)
+        (add-hook 'buffer-list-update-hook #'cas-modeline--refresh-cache))
     (progn
       (setq-default mode-line-format cas-modeline--old-mode-line-format)
       (dolist (buf (buffer-list))
         (with-current-buffer buf
-          (setq mode-line-format cas-modeline--old-mode-line-format))))))
+          (setq mode-line-format cas-modeline--old-mode-line-format)))
+      (remove-hook 'find-file-hook #'cas-modeline--ensure-cache-timer)
+      (remove-hook 'after-save-hook #'cas-modeline--refresh-cache)
+      (remove-hook 'buffer-list-update-hook #'cas-modeline--refresh-cache))))
 
 (provide 'cas-modeline)
 

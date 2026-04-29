@@ -10,7 +10,7 @@
   :type 'symbol)
 
 (defun casmacs-get-appearance ()
-  (if (string= (plist-get (mac-application-state) :appearance) "NSAppearanceNameAqua")
+  (if nil
       'light
     'dark))
 
@@ -36,16 +36,18 @@
   (modus-themes-org-blocks 'gray-background)
   (casmacs-dark-theme 'modus-vivendi)
   (casmacs-light-theme 'modus-operandi)
-  :config
+  :init
   (let ((modus-palette '((fringe                  bg-dim)
                          (bg-mode-line-active     bg-blue-subtle)
                          (fg-mode-line-active     fg-main)
                          (border-mode-line-active blue-intense)
-                         (bg-completion bg-inactive))))
-    (setq modus-themes-common-palette-overrides nil
-          ;; modus-themes-completions ((matches . ()))
-          )
-    )
-  (load-theme casmacs-dark-theme t))
+                         ;; (bg-completion bg-inactive)
+                         )))
+    (setq modus-themes-common-palette-overrides modus-palette))
+  (casmacs-apply-theme))
+
+;; (use-package ef-themes
+;;   :init
+;;   (load-theme 'ef-dark t))
 
 (provide 'cas-emacs-theme)
