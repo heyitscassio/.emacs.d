@@ -18,30 +18,31 @@
 (defmacro remove-from-list (list value)
   `(setq ,list (remove ,value ,list)))
 
-(require 'package)
-(add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
-
-(setq package-selected-packages '(use-package))
-
-(package-install-selected-packages)
-
-(eval-when-compile
-  (require 'use-package))
-
-(setq use-package-always-ensure t)
-
 (mapc
  (lambda (string)
    (add-to-list 'load-path (expand-file-name (locate-user-emacs-file string))))
  '("lisp" "modules"))
 
+(setq user-emacs-directory (expand-file-name "~/.cache/emacs/"))
+
+(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
+
+;; Elpaca
+
+(require 'cas-emacs-elpaca)
+
+;; Load packages early
+
+(use-package compat :ensure (:wait t))
+
+(require 'cas-emacs-evil)
+
+(use-package no-littering
+  :ensure (:wait t)
+  :init
+  (require 'no-littering))
+
 (setq elisp-flymake-byte-compile-load-path load-path)
-
-;; Change the user-emacs-directory to keep unwanted things out of ~/.emacs.d
-(setq user-emacs-directory (expand-file-name "~/.cache/emacs/")
-      url-history-file (expand-file-name "url/history" user-emacs-directory))
-
-;; (locate-user-emacs-file "oi")
 
 (use-package dired
   :ensure nil
@@ -52,11 +53,6 @@
   (when (eq system-type 'darwin)
     (setq insert-directory-program "/opt/homebrew/bin/gls")))
 
-;; Use no-littering to automatically set common paths to the new user-emacs-directory
-(use-package no-littering
-  :init
-  (require 'no-littering))
-
 ;; Garbage collector
 (use-package gcmh
   :init
@@ -66,10 +62,6 @@
   :init
   (when (memq window-system '(mac ns x))
     (exec-path-from-shell-initialize)))
-
-(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
-
-(load custom-file t)
 
 ;; Functions
 
@@ -100,19 +92,8 @@
   :init
   (which-key-mode))
 
-(use-package general
-  :config
-  (general-create-definer general-leader
-    :states 'normal
-    :keymaps 'override
-    :prefix "SPC"
-    :global-prefix "C-SPC")
-  (general-create-definer general-local-leader
-    :states 'normal
-    :prefix "SPC m"
-    :global-prefix "C-SPC m"))
-
 (use-package emacs
+  :ensure nil
   :init
   (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
   (setq frame-inhibit-implied-resize t)
@@ -147,16 +128,18 @@
 (setq inhibit-startup-message t)
 (scroll-bar-mode -1)
 (tool-bar-mode -1)
-(tooltip-mode -1)
+;; (tooltip-mode -1)
 (fringe-mode '(nil . 0))
+(menu-bar-mode -1)
 
-(if (not (eq system-type 'darwin))
-    (menu-bar-mode -1))
+;; (if (not (eq system-type 'darwin))
+;;     (menu-bar-mode -1))
 
 (blink-cursor-mode 0)
 (set-default 'truncate-lines t)
 
 (use-package diff-hl
+  :after magit
   :hook ((magit-pre-refresh . diff-hl-magit-pre-refresh)
          (magit-post-refresh . diff-hl-magit-post-refresh))
   :init
@@ -260,7 +243,7 @@
   (fontaine-latest-state-file (locate-user-emacs-file "fontaine-latest-state.eld"))
   (fontaine-presets '((regular :default-height 120)
                       (big :default-height 180)
-                      (t :default-family "SF Mono")))
+                      (t :default-family "Go Mono")))
   :config
   (fontaine-set-preset (or (fontaine-restore-latest-preset) 'regular))
   :init
@@ -269,7 +252,7 @@
 (use-package alert
   :custom (alert-default-style 'osx-notifier))
 
-(use-package org-modern)
+;; (use-package org-modern)
 
 (use-package org
   :general
@@ -315,6 +298,7 @@
   (add-to-list 'org-structure-template-alist '("json" . "src json")))
 
 (use-package emacs
+  :ensure nil
   :init
   (show-paren-mode))
 
@@ -329,6 +313,7 @@
 (add-hook 'prog-mode-hook #'electric-indent-mode)
 
 (use-package emacs
+  :ensure nil
   :hook ((prog-mode html-mode cider-repl-mode) . electric-pair-local-mode))
 
 (setq tramp-default-method "ssh")
@@ -362,6 +347,7 @@
 
 
 (use-package emacs
+  :ensure nil
   :custom
   (history-length 100)
   (read-extended-command-predicate #'command-completion-default-include-p)
@@ -370,6 +356,7 @@
   (savehist-mode 1))
 
 (use-package emacs
+  :ensure nil
   :custom
   (global-auto-revert-non-file-buffers t)
   :init
@@ -401,7 +388,8 @@
   (require 'emms-player-mpd)
   (emms-all))
 
-(setq magit-push-refspecs-history)
+(use-package transient)
+
 (use-package magit
   :hook (git-commit-mode . evil-insert-state)
   :custom
@@ -442,23 +430,22 @@
                                        (window-height  . 0.20)
                                        (preserve-size . (nil . t)))))
 
-
-
 (use-package project
+  :ensure nil
   :custom
   (project-prompter #'project-prompt-project-name)
   (project-vc-extra-root-markers '(".project" ".projectile")))
 
 (use-package eglot
-  :after cape
+  :ensure nil
   :hook
-  (;; ((clojure-mode
-   ;;   clojurescript-mode
-   ;;   go-mode
-   ;;   c-mode
-   ;;   python-mode)
-   ;;  .
-   ;;  eglot-ensure)
+  (((clojure-mode
+     clojurescript-mode
+     go-mode
+     c-mode
+     python-mode)
+    .
+    eglot-ensure)
    (eglot-managed-mode . casmacs-eglot-lower-capf-prio))
   :custom
   (eglot-confirm-server-initiated-edits nil)
@@ -474,16 +461,6 @@
     "cr" '(eglot-rename :which-key "Rename")
     "cf" '(eglot-format :which-key "Format"))
   :init
-  ;; (advice-add #'eglot-completion-at-point :around
-  ;;             (lambda (orig &rest args)
-  ;;               (let ((result (apply orig args)))
-  ;;                 (message "eglot capf result: %S" result)
-  ;;                 result)))
-  (add-hook 'go-mode-hook (lambda ()
-                            (add-hook 'before-save-hook
-                                      (lambda ()
-                                        (eglot-code-action-organize-imports (point-min)))
-                                      nil t)))
   (defun casmacs-eglot-lower-capf-prio ()
     "Make the eglot capf have lower priority"
     (when (boundp 'cider-mode)
@@ -493,36 +470,15 @@
         (add-to-list 'completion-at-point-functions #'eglot-completion-at-point t)
         (add-to-list 'completion-at-point-functions t t))))
   :config
-  (advice-add #'eglot-completion-at-point :around #'cape-wrap-buster)
+  ;; (advice-add #'eglot-completion-at-point :around #'cape-wrap-buster)
   (add-to-list 'eglot-server-programs
                '((python-mode python-ts-mode)
                  "basedpyright-langserver" "--stdio"))
   (setq-default
    eglot-workspace-configuration
    '(:basedpyright
-     (:typeCheckingMode "standard")))
+     (:typeCheckingMode "standard"))))
 
-  (defclass eglot-deno (eglot-lsp-server) ()
-    :documentation "A custom class for deno lsp.")
-
-  (cl-defmethod eglot-initialization-options ((server eglot-deno))
-    "Passes through required deno initialization options"
-    (list :enable t
-    :lint t))
-
-  (defclass eglot-volar (eglot-lsp-server) ()
-    :documentation "A custom class for volar")
-
-  (cl-defmethod eglot-initialization-options ((server eglot-volar))
-    "Passes through required volar initialization options"
-    (let ((tsdk-path
-           (expand-file-name
-            "lib"
-            (string-trim-right (shell-command-to-string "npm list --parseable typescript | tail -n1")))))
-      `(:typescript (:tsdk ,tsdk-path)
-                    :vue (:hybridMode :json-false))))
-  (add-to-list 'eglot-server-programs '((js-mode typescript-mode (typescript-ts-base-mode :language-id "typescript")) . (eglot-deno "deno" "lsp")))
-  (add-to-list 'eglot-server-programs '(vue-mode . (eglot-volar "vue-language-server" "--stdio"))))
 
 (use-package breadcrumb
   :hook (eglot-managed-mode . breadcrumb-local-mode))
@@ -549,6 +505,7 @@
                  :showReturnValue t)))
 
 (use-package sideline-flymake
+  :after sideline
   :custom
   (sideline-flymake-display-mode 'line))
 
@@ -562,27 +519,27 @@
 
 (use-package eat
   :hook ((eshell-load . eat-eshell-mode)
+         (eat-mode . cas-emacs--eat-font-setup)
          (eat-mode . cas-emacs-hide-trailing-whitespace))
-  :config
-  (defun sm-replace-problem-chars (args)
-    (let ((terminal (nth 0 args))
-          (output (nth 1 args))
-          (sm-subsitutions '((?✢ . ?+)
-                             (?✳ . ?*)
-                             (?∗ . ?*)
-                             (?✻ . ?*)
-                             (?✽ . ?*)
-                             (?🤖 . ?*))))
-      (dolist (sub sm-subsitutions)
-        (setq output (subst-char-in-string (car sub) (cdr sub) output)))
-      (list terminal output)))
-
-  (advice-add 'eat-term-process-output :filter-args #'sm-replace-problem-chars))
+  :preface
+  (defun cas-emacs--eat-font-setup ()
+    "Configure font settings specifically for vterm buffers, workaround claude-code."
+    (let ((tbl (or buffer-display-table (setq buffer-display-table (make-display-table)))))
+      (dolist (pair
+               '((#x273B . ?*)   ; ✻ TEARDROP-SPOKED ASTERISK
+                 (#x273D . ?*)   ; ✽ HEAVY TEARDROP-SPOKED ASTERISK
+                 (#x2722 . ?+)   ; ✢ FOUR TEARDROP-SPOKED ASTERISK
+                 (#x2736 . ?+)   ; ✶ SIX-POINTED BLACK STAR
+                 (#x2733 . ?*))) ; ✳ EIGHT SPOKED ASTERISK
+        (aset tbl (car pair) (vector (cdr pair))))))
+  )
 
 (use-package ediff
   :ensure nil
   :custom
-  (ediff-window-setup-function 'ediff-setup-windows-plain))
+  (ediff-window-setup-function 'ediff-setup-windows-plain)
+  (ediff-keep-variants nil)
+  (ediff-split-window-function #'split-window-horizontallly))
 
 (use-package envrc
   :hook (after-init . envrc-global-mode))
@@ -599,45 +556,40 @@
                  (#x273D . ?*)   ; ✽ HEAVY TEARDROP-SPOKED ASTERISK
                  (#x2722 . ?+)   ; ✢ FOUR TEARDROP-SPOKED ASTERISK
                  (#x2736 . ?+)   ; ✶ SIX-POINTED BLACK STAR
-                 (#x2733 . ?*))) ; ✳ EIGHT SPOKED ASTERISK
+                 (#x2733 . ?*)   ; ✳ EIGHT SPOKED ASTERISK
+                 (#x23FA . ?●))) ; ⏺ BLACK CIRCLE FOR RECORD
         (aset tbl (car pair) (vector (cdr pair)))))))
 
-(use-package monet
-  :vc (:url "https://github.com/stevemolitor/monet" :rev :newest))
-
-(use-package claude-code
-  :after monet
-  :vc (:url "https://github.com/stevemolitor/claude-code.el" :rev :newest)
-  :custom
-  (claude-code-terminal-backend 'vterm)
-  :config
-  ;; optional IDE integration with Monet
-  (add-hook 'claude-code-process-environment-functions #'monet-start-server-function)
-  (monet-mode 1)
-
-  (claude-code-mode)
-  :bind-keymap ("C-c c" . claude-code-command-map)
-
-  ;; Optionally define a repeat map so that "M" will cycle thru Claude auto-accept/plan/confirm modes after invoking claude-code-cycle-mode / C-c M.
-  :bind
-  (:repeat-map my-claude-code-map ("M" . claude-code-cycle-mode)))
+(use-package inheritenv)
 
 (use-package claude-code-ide
   :vc (:url "https://github.com/manzaltu/claude-code-ide.el" :rev :newest)
   :general
   (general-leader
     "occ" '(claude-code-ide-toggle :which-key "toggle claude ide")
-    "ocm" '(claude-code-ide-menu :which-key "claude ide menu"))
+    "ocm" '(claude-code-ide-menu :which-key "claude ide menu")
+    "ocs" '(claude-code-ide :which-key "start claude code ide"))
   :custom
-  (claude-code-ide-terminal-backend 'eat)
+  (claude-code-ide-terminal-backend 'vterm)
   :config
+  (inheritenv-add-advice 'claude-code-ide--create-terminal-session)
   (claude-code-ide-emacs-tools-setup))
 
+;; (use-package treesit-auto
+;;   :custom
+;;   (treesit-auto-install 'prompt)
+;;   :config
+;;   (treesit-auto-add-to-auto-mode-alist 'all))
+
+(use-package minions
+  :config (minions-mode))
+
 (require 'cas-emacs-langs)
-(require 'cas-emacs-evil)
-(require 'cas-emacs-general)
 (require 'cas-emacs-modeline)
 (require 'cas-emacs-perspective)
 (require 'cas-emacs-consult)
 (require 'cas-emacs-theme)
 (require 'cas-emacs-completion)
+
+;; if something breaks before this, debug. This is set to 't on early-init
+;; (setq debug-on-error nil)

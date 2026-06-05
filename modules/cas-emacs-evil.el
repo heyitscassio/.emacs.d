@@ -20,6 +20,19 @@
                  (slot . 0)
                  (window-height . .33))))
 
+(use-package general
+  :ensure (:wait t)
+  :config
+  (general-create-definer general-leader
+    :states 'normal
+    :keymaps 'override
+    :prefix "SPC"
+    :global-prefix "C-SPC")
+  (general-create-definer general-local-leader
+    :states 'normal
+    :prefix "SPC m"
+    :global-prefix "C-SPC m"))
+
 (use-package evil
   :hook (emacs-lisp-mode . (lambda () (setq evil-lookup-func #'casmacs-elisp-lookup)))
   :general
@@ -34,13 +47,13 @@
   (evil-echo-state nil)
   (evil-auto-indent t)
   :init
+  (setq evil-want-keybinding nil)
   (defun casmacs-elisp-lookup ()
     (interactive)
     (let ((sym (symbol-at-point)))
       (if sym
           (describe-symbol (symbol-at-point))
         (message "Invalid symbol"))))
-  (setq evil-want-keybinding nil)
   :config
   (evil-mode 1))
 
@@ -100,6 +113,7 @@
           ,@evil-surround-pairs-alist)))
 
 (use-package evil-lion
+  :after evil
   :config
   (evil-lion-mode))
 

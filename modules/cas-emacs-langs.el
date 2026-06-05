@@ -50,7 +50,8 @@
     "'" '(cider-connect-clj :which-key "Connect clj")
     "\"" '(cider-connect-cljs :which-key "Connect cljs")
     "j" '(cider-jack-in-clj :which-key "Jack-in clj")
-    "J" '(cider-jack-in-cljs :which-key "Jack-in cljs"))
+    "J" '(cider-jack-in-cljs :which-key "Jack-in cljs")
+    "q" '(cider-quit :which-key "Quit repl"))
   :config
   (add-to-list 'display-buffer-alist '("\\*cider-repl.*"
                                        (display-buffer-in-side-window)
@@ -65,6 +66,7 @@
            (target-ns (if in-test-p
                           (substring current-ns 0 (- (length current-ns) 5))
                         (concat current-ns "-test"))))
+      (message "%s" target-ns)
       (condition-case nil
           (if other-window
               (let ((current-buffer (current-buffer)))
@@ -87,7 +89,7 @@
 
 ;;; C
 
-(use-package c-mode
+(use-package cc-mode
   :ensure nil
   :custom
   (c-tab-always-indent 'complete)
@@ -107,6 +109,7 @@
 ;;; Elisp
 
 (use-package flymake
+  :ensure nil
   :hook (emacs-lisp-mode . (lambda () (add-hook 'find-file-hook #'cas-emacs-flymake-mode-when-lexical-bound nil t)))
   :init
   (remove-hook 'flymake-diagnostic-functions 'flymake-proc-legacy-flymake)
@@ -170,6 +173,10 @@
 
 (use-package terraform-mode)
 
+;;;
+
+;; (use-package templ-ts-mode)
+
 ;;; Typescript
 
 (use-package typescript-mode
@@ -203,8 +210,3 @@
 ;;; Svelte
 
 (use-package svelte-mode)
-
-
-;;; Jupyter
-
-(use-package jupyter)

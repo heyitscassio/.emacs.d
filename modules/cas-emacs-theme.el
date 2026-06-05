@@ -1,6 +1,11 @@
 ;; -*- lexical-binding: t; -*-
 
 
+(defcustom casmacs-default-appearance 'dark
+  "Default appearance"
+  :type '(choice (const :tag "Dark" dark)
+                 (const :tag "Light" light)))
+
 (defcustom casmacs-dark-theme 'leuven-dark
   "My dark theme"
   :type 'symbol)
@@ -9,25 +14,27 @@
   "My light theme"
   :type 'symbol)
 
-(defun casmacs-get-appearance ()
-  (if nil
-      'light
-    'dark))
+(defun casmacs--get-appearance ()
+  (if (fboundp 'mac-application-state)
+      (if (string= (plist-get (mac-application-state) :appearance)
+                   "NSAppearanceNameAqua")
+          'light
+        'dark)
+    casmacs-default-appearance))
 
-(defun casmacs-set-theme (appearance)
-  (let ((theme (if (eq appearance 'light) casmacs-light-theme casmacs-dark-theme)))
+(defun casmacs-apply-theme (&optional appearance)
+  "Load theme, taking current system APPEARANCE into consideration."
+  (let* ((appearance (or appearance (casmacs--get-appearance)))
+         (theme (if (eq appearance 'light) casmacs-light-theme casmacs-dark-theme)))
     (dolist (enabled-theme custom-enabled-themes)
       (disable-theme enabled-theme))
     (load-theme theme t)))
 
-(defun casmacs-apply-theme (&optional appearance)
-  "Load theme, taking current system APPEARANCE into consideration."
-  (mapc #'disable-theme custom-enabled-themes)
-  (pcase (or appearance (casmacs-get-appearance))
-    ('light (load-theme casmacs-light-theme t))
-    ('dark (load-theme casmacs-dark-theme t))))
-
-(add-hook 'mac-effective-appearance-change-hook #'casmacs-apply-theme)
+(cond
+ ((boundp 'ns-system-appearance-change-functions)
+  (add-hook 'ns-system-appearance-change-functions #'casmacs-apply-theme))
+ ((boundp 'mac-effective-appearance-change-hook)
+  (add-hook 'mac-effective-appearance-change-hook #'casmacs-apply-theme)))
 
 (use-package modus-themes
   :custom
@@ -36,6 +43,7 @@
   (modus-themes-org-blocks 'gray-background)
   (casmacs-dark-theme 'modus-vivendi)
   (casmacs-light-theme 'modus-operandi)
+  (casmacs-default-appearance 'light)
   :init
   (let ((modus-palette '((fringe                  bg-dim)
                          (bg-mode-line-active     bg-blue-subtle)

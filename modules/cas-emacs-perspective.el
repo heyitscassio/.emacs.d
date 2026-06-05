@@ -1,12 +1,11 @@
 ;; -*- lexical-binding: t; -*-
 
-(use-package ibuffer)
-
 (use-package perspective
   ;; :hook ((kill-emacs . persp-state-save)
   ;;        (after-init . cas-emacs--load-persp))
   :custom
   (persp-state-default-file (expand-file-name "persp-state.eld" user-emacs-directory))
+  (persp-suppress-no-prefix-key-warning t)
   :general
   (general-leader
     "bD" '(persp-kill-buffer* :which-key "Kill buffer")
