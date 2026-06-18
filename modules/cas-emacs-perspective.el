@@ -20,6 +20,7 @@
   (defun cas-emacs--load-persp ()
     (when (file-exists-p persp-state-default-file)
       (persp-state-load persp-state-default-file)))
+
   (defun cas-emacs-switch-project-with-persp ()
     "Switch to a project and create a perspective named after it."
     (interactive)
@@ -33,6 +34,8 @@
          (persp-kill project-name)
          (signal 'quit nil)))))
   :init
-  (persp-mode 1))
+  (persp-mode 1)
+  :config
+  (require 'ibuffer))
 
 (provide 'cas-emacs-perspective)

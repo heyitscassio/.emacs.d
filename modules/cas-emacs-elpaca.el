@@ -45,6 +45,5 @@
   (elpaca-use-package-mode))
 
 (setq use-package-always-ensure t)
-(add-hook 'elpaca-after-init-hook (lambda () (load custom-file t)))
 
 (provide 'cas-emacs-elpaca)

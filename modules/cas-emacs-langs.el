@@ -52,6 +52,9 @@
     "j" '(cider-jack-in-clj :which-key "Jack-in clj")
     "J" '(cider-jack-in-cljs :which-key "Jack-in cljs")
     "q" '(cider-quit :which-key "Quit repl"))
+  (general-local-leader
+    :keymaps 'cider-repl-mode-map
+    "q" '(cider-quit :which-key "Quit repl"))
   :config
   (add-to-list 'display-buffer-alist '("\\*cider-repl.*"
                                        (display-buffer-in-side-window)
@@ -175,7 +178,7 @@
 
 ;;;
 
-;; (use-package templ-ts-mode)
+(use-package templ-ts-mode)
 
 ;;; Typescript
 

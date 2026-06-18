@@ -33,6 +33,8 @@
 
 ;; Load packages early
 
+(add-hook 'elpaca-after-init-hook (lambda () (load custom-file t)))
+
 (use-package compat :ensure (:wait t))
 
 (require 'cas-emacs-evil)
@@ -542,7 +544,26 @@
   (ediff-split-window-function #'split-window-horizontallly))
 
 (use-package envrc
-  :hook (after-init . envrc-global-mode))
+  :hook ((elpaca-after-init . envrc-global-mode)
+         (envrc-global-mode
+          .
+          (lambda ()
+            (let ((fn (if (fboundp #'envrc-global-mode-enable-in-buffers)
+                          #'envrc-global-mode-enable-in-buffers ; Removed in Emacs 30.
+                        #'envrc-global-mode-enable-in-buffer)))
+              (if (not envrc-global-mode)
+                  (remove-hook 'change-major-mode-after-body-hook fn)
+                (remove-hook 'after-change-major-mode-hook fn)
+                (add-hook 'change-major-mode-after-body-hook fn 100)))))))
+
+(use-package inheritenv
+  :config
+  ;; CIDER starts the nREPL server inside a fresh *nrepl-server* buffer, which
+  ;; lacks envrc's buffer-local environment, so the JVM misses `.envrc'. Wrap the
+  ;; jack-in commands so they inherit the env from the buffer they're invoked in.
+  (with-eval-after-load 'cider
+    (inheritenv-add-advice #'cider-jack-in-clj)
+    (inheritenv-add-advice #'cider-jack-in-cljs)))
 
 (use-package vterm
   :hook ((vterm-mode . cas-emacs-hide-trailing-whitespace)
@@ -560,7 +581,6 @@
                  (#x23FA . ?●))) ; ⏺ BLACK CIRCLE FOR RECORD
         (aset tbl (car pair) (vector (cdr pair)))))))
 
-(use-package inheritenv)
 
 (use-package claude-code-ide
   :vc (:url "https://github.com/manzaltu/claude-code-ide.el" :rev :newest)
